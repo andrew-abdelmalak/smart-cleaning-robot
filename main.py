@@ -180,17 +180,25 @@ def set_motor_pwm(left_pwm, right_pwm, direction="stop"):
     
     # Direction control
     if direction == "forward":
-        in3.high(); in4.low()
-        in1.high(); in2.low()
+        in3.high()
+        in4.low()
+        in1.high()
+        in2.low()
     elif direction == "backward":
-        in3.low(); in4.high()
-        in1.low(); in2.high()
+        in3.low()
+        in4.high()
+        in1.low()
+        in2.high()
     elif direction == "pivot_left":
-        in3.low(); in4.high()
-        in1.high(); in2.low()
+        in3.low()
+        in4.high()
+        in1.high()
+        in2.low()
     elif direction == "pivot_right":
-        in3.high(); in4.low()
-        in1.low(); in2.high()
+        in3.high()
+        in4.low()
+        in1.low()
+        in2.high()
     else:
         phys_left_pwm, phys_right_pwm = 0, 0
     
@@ -473,9 +481,9 @@ class BLEUART:
     def _advertise(self):
         """Start advertising"""
         try:
-            self._ble.gap_advertise(100_000, 
+            self._ble.gap_advertise(100_000,
                                    adv_data=self._adv_payload)
-        except:
+        except Exception:
             pass
     
     def _irq_handler(self, event, data):
@@ -500,7 +508,7 @@ class BLEUART:
                 last_ble_command = (
                     self._ble.gatts_read(self._rx_handle)
                     .decode().strip().upper())
-            except:
+            except Exception:
                 last_ble_command = ""
 
 # ===========================================================
@@ -521,7 +529,7 @@ def main_program_loop():
     
     # Initialize
     left_start, right_start = 0, 0
-    ble_uart = BLEUART(bluetooth.BLE())
+    ble_uart = BLEUART(bluetooth.BLE())  # noqa: F841 — must be instantiated to register BLE IRQ
     
     while True:
         current_time = time.ticks_ms()
