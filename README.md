@@ -277,6 +277,17 @@ The full bachelor thesis is available at [`docs/Thesis.pdf`](docs/Thesis.pdf).
 
 ---
 
+## References
+
+1. H. Choset, "Coverage for robotics — A survey of recent results," *Annals of Mathematics and Artificial Intelligence*, vol. 31, pp. 113–126, 2001.
+2. C. Cadena *et al.*, "Past, Present, and Future of Simultaneous Localization and Mapping," *IEEE Transactions on Robotics*, vol. 32, no. 6, pp. 1309–1332, 2016.
+3. H. Durrant-Whyte and T. Bailey, "Simultaneous Localization and Mapping: Part I," *IEEE Robotics & Automation Magazine*, vol. 13, no. 2, pp. 99–110, 2006.
+4. Raspberry Pi Ltd, "Raspberry Pi Pico W Datasheet," 2022. [Online]. Available: https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf
+5. STMicroelectronics, "L298 Dual Full-Bridge Driver Datasheet," Rev 10, 2013. [Online]. Available: https://www.st.com/resource/en/datasheet/l298.pdf
+6. Cytron Technologies, "HC-SR04 Ultrasonic Sensor Datasheet." [Online]. Available: https://docs.cytron.io/
+
+---
+
 ## License
 
 [MIT](LICENSE) © 2026 Andrew Abdelmalak
