@@ -1,21 +1,45 @@
-# Python bytecode/cache
-__pycache__/
-*.py[cod]
-*.pyo
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Tooling and editor
-.vscode/
-.idea/
-
-# OS files
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
 
-# Logs
+# ── IDE / Editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# ── MicroPython ───────────────────────────────────────────────────────────────
+*.mpy
+.micropython/
+flash/
+boot_out.txt
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
+*.out
+
+# ── Archives ──────────────────────────────────────────────────────────────────
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
