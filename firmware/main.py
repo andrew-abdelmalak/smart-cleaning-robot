@@ -821,7 +821,7 @@ def run_autonomous_step(now: int) -> bool:
 def control_step() -> None:
     """Run one 20 ms iteration of the control loop.
 
-    Priority order: horn or obstacle block, then the active manual command,
+    Priority order: the horn, then the active manual command,
     then the autonomous state machine, then a safety stop when idle.
     """
     now = time.ticks_ms()
@@ -834,7 +834,7 @@ def control_step() -> None:
     if command and handle_command(command):
         return
 
-    if horn_active or forward_blocked:
+    if horn_active:
         horn_buzz()
         update_led()
         time.sleep_ms(20)

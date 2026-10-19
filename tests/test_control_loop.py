@@ -45,6 +45,13 @@ def test_obstacle_blocks_forward_and_sounds_horn(robot, run_loop):
     assert robot.ena.duty_u16() == duty(7.5)
 
 
+def test_horn_command_silences_an_obstacle_block(robot, run_loop):
+    robot.sonar.distance_cm = 10
+    run_loop(20, {10: "FORWARD", 15: "HORN"})
+    assert robot.forward_blocked  # FORWARD stays blocked
+    assert motors_stopped(robot)  # but the buzzing stops
+
+
 def test_turning_away_clears_the_obstacle_block(robot, run_loop):
     robot.sonar.distance_cm = 10
     run_loop(18, {10: "FORWARD", 13: "LEFT"})
