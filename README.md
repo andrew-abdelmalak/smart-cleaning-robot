@@ -171,7 +171,7 @@ Supervised by Prof. Dr. Walid Atef Hafez Omran, co-supervised by Dr. Hisham Most
 
 ## Contributing and security
 
-This is a finished thesis project, so I do not plan new features. Bug reports and fixes are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
+This is a finished thesis project, so I do not plan new features. Bug reports and fixes are welcome; see [CONTRIBUTING.md](.github/CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](.github/SECURITY.md).
 
 ## License
 

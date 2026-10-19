@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the thesis below."
+title: "Smart Cleaning Robot"
+abstract: "MicroPython firmware for a low-cost floor-cleaning robot on a Raspberry Pi Pico W, with BLE remote control, ultrasonic obstacle avoidance, and feed-forward plus PID wheel control."
+type: software
+authors:
+  - family-names: "Abdelmalak"
+    given-names: "Andrew Khalil Samuel"
+version: "1.1.0"
+date-released: "2026-10-20"
+license: "MIT"
+repository-code: "https://github.com/andrew-abdelmalak/smart-cleaning-robot"
+keywords:
+  - "robotics"
+  - "micropython"
+  - "raspberry-pi-pico"
+  - "pid-controller"
+  - "bluetooth-low-energy"
+preferred-citation:
+  type: thesis
+  thesis-type: "Bachelor's thesis"
+  title: "Design and Implementation of a Smart Cleaning Robot"
+  authors:
+    - family-names: "Abdelmalak"
+      given-names: "Andrew Khalil Samuel"
+  institution:
+    name: "German University in Cairo, Faculty of Engineering and Materials Sciences"
+  month: 6
+  year: 2025
+  url: "https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/docs/thesis/thesis.pdf"

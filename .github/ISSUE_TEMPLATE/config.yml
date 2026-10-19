@@ -1,0 +1,9 @@
+# Controls the "New issue" template chooser. Takes effect on the default branch.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/andrew-abdelmalak/smart-cleaning-robot/security/advisories/new
+    about: Report vulnerabilities privately. Never open a public issue for them.
+  - name: Read the thesis
+    url: https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/docs/thesis/thesis.pdf
+    about: The full design, wiring, bill of materials, and test results.
