@@ -1,0 +1,30 @@
+[project]
+name = "smart-cleaning-robot"
+version = "1.0.0"
+description = "MicroPython firmware for a Raspberry Pi Pico W cleaning robot with BLE control and feed-forward plus PID motion control."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Andrew Abdelmalak" }]
+# The firmware runs on MicroPython. This Python version applies only to the
+# host-side tests and tooling.
+requires-python = ">=3.12"
+
+[dependency-groups]
+dev = [
+    "mpy-cross>=1.29",
+    "pytest>=9.1",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["firmware"]
+
+[tool.ruff]
+src = ["firmware", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "SIM"]

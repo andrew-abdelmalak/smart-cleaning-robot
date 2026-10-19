@@ -1,0 +1,173 @@
+\frontmatter % Use for roman page numbering, ToC, lists, etc.
+\pagestyle{plain}
+
+% --- Title Page Definition ---
+\newcommand{\titlePage}{
+  \thispagestyle{empty}
+  \begin{center}
+    \textbf{Faculty of Engineering and Materials Sciences}\\[1mm]
+    \textbf{German University in Cairo}\\[1mm]
+    \includegraphics[width=0.1\textwidth, keepaspectratio]{images/misc/guc_logo.png}
+
+    \vspace{2cm}
+    \doublespacing
+    {\Huge \textbf{\titleOfThesisOne}}\\
+    \singlespacing
+    \vspace{2cm}
+    {\large \textbf{\typeOfThesis}}\\
+
+    \vfill
+    \parbox{10cm}{ % Adjusted width slightly for potentially longer names
+      \begin{large}
+        \begin{tabbing} % Used tabbing for alignment
+          Author: \hspace{2.5cm} \=\authorOfThesis\\[2mm] % Adjusted spacing
+          Supervisors: \> \supervisorOne\\[2mm]
+          Co-Supervisor: \> \cosupervisor\\[2mm]
+          Reviewer: \> \reviewer\\[2mm]
+          Submission Date: \> \submissionDate\\
+        \end{tabbing}
+      \end{large}
+    }
+  \end{center}
+  \clearpage
+}
+% Call the title page command
+\titlePage
+
+% --- Certification Page Inclusion ---
+\thispagestyle{empty}
+This is to certify that:
+\begin{itemize}
+\item[(i)] the thesis comprises only my original work toward the Bachelor Degree
+\item[(ii)] due acknowledgement has been made in the text to all other material used
+\end{itemize}
+
+\vspace{3cm} % Increased spacing
+\begin{flushright}
+\rule[0mm]{6cm}{0.2mm}\\ % Signature line
+\vspace{5mm} % Space before name
+\authorOfThesis\\
+\submissionDay~\submissionMonth,~\submissionYear\\
+\end{flushright}
+\clearpage
+
+% --- Acknowledgements Inclusion ---
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements} % Adds this page to the Table of Contents
+
+I would first like to thank God for granting me the strength, focus, and perseverance to complete this work.
+
+\vspace{1em}
+
+I am deeply grateful to my supervisor, \supervisorOne, whose expertise in electrical engineering, patient guidance, and enthusiastic encouragement were invaluable throughout every stage of this thesis.
+
+\vspace{1em}
+
+I would also like to express my sincere appreciation to my co-supervisor, \cosupervisor, whose mechanical-engineering perspective and constructive feedback greatly enriched both the research and the writing of this work.
+
+\vspace{1em}
+
+Finally, I wish to thank my parents and family for their unwavering support, patience, and constant encouragement.
+
+\vspace{2cm}
+\begin{flushright}
+\authorOfThesis\\
+\submissionDate\\
+\end{flushright}
+\clearpage
+
+% --- Dedication ---
+\chapter*{Dedication}
+\thispagestyle{empty}
+\vspace*{3cm}
+\begin{center}
+\textit{To my parents,\\[0.5em]
+for their endless support, patience,\\[0.5em]
+and unwavering belief in me.}
+\end{center}
+\clearpage
+
+% --- Abstract Inclusion ---
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract} % This link for Abstract is usually fine
+Household cleaning is a repetitive and time-consuming task, often detracting from other valuable activities in increasingly busy modern lifestyles. This project addresses the persistent need for automation in domestic environments by focusing on the critical area of floor cleaning, aiming to alleviate this burden. The primary objective is the comprehensive design, development, and implementation of a ``Smart Cleaning Robot'' prototype, conceived to simplify cleaning routines and significantly reduce direct human effort and interaction. This thesis meticulously details the iterative development journey of this prototype, from conceptualization through multiple design refinements to final assembly.
+
+The robot's navigation has been engineered into a hybrid feed-forward and feedback control system, utilizing a predictive model to proactively manage motor commands while using a Proportional-Integral-Derivative architecture to correct for real-world deviations. This enables the robot to navigate more methodically using a coverage pattern of moving forward until an obstacle is detected and then executing a wide, corrective turn. This system allows it to manage its movements with greater precision and perform autonomous recovery maneuvers. The robot's core functionality relies on an integrated vacuum system, powered by a PS3 Slim fan. Central control is managed by a Raspberry Pi Pico W microcontroller, which processes data from an ultrasonic distance sensor for real-time obstacle detection and from the encoders for motion control. Mobility is achieved through two independently controlled Direct Current motors, and the entire system is powered by a rechargeable Lithium-ion battery pack.
+
+The project's methodology encompassed a structured, iterative design process that included detailed mechanical modeling using SolidWorks software, the fabrication of a custom 3D-printed chassis, and the design and implementation of a dedicated Printed Circuit Board. The prototype achieves its core functionality at approximately 60--90\% lower cost than entry-level commercial robots, with a total component cost of approximately \$80 USD. Testing demonstrated stable BLE remote control, improved navigation precision through PID control, and an operational battery runtime exceeding 60 minutes. While the prototype successfully demonstrates effective vacuuming and responsive remote control, the core of the work lies in the implementation and analysis of the advanced control system. This thesis candidly highlights the successes in implementing this system, the remaining precision challenges inherent to the chosen hardware, and the key recommendation of exploring stepper motors for future work, thereby contributing to the accessibility of domestic robotic assistance.
+\clearpage % Ends the Abstract page. ToC will start on a new page.
+
+% --- Table of Contents ---
+\phantomsection % Add an anchor for hyperref at the top of the new page
+\addcontentsline{toc}{chapter}{Table of Contents} % Link the ToC entry to the anchor above
+\renewcommand{\contentsname}{Table of Contents} % Define the title string for \tableofcontents
+\tableofcontents % This prints the actual Table of Contents
+\clearpage
+
+% --- List of Figures ---
+\phantomsection % Add an anchor for hyperref at the top of the new page
+\addcontentsline{toc}{chapter}{List of Figures} % Link the LoF entry to this anchor
+\listoffigures % This prints the actual List of Figures
+\clearpage
+
+% --- List of Tables ---
+\phantomsection % Add an anchor for hyperref at the top of the new page
+\addcontentsline{toc}{chapter}{List of Tables} % Link the LoT entry to this anchor
+\listoftables % This prints the actual List of Tables
+\clearpage
+
+% --- List of Abbreviations ---
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+\begin{description}
+    \item[\textbf{ADC}:] Analog-to-Digital Converter. \label{term:adc}
+    \item[\textbf{BLE}:] Bluetooth Low Energy. \label{term:ble}
+    \item[\textbf{CAD}:] Computer-Aided Design. \label{term:cad}
+    \item[\textbf{DC}:] Direct Current. \label{term:dc}
+    \item[\textbf{FDM}:] Fused Deposition Modeling. \label{term:fdm}
+    \item[\textbf{FF}:] Feed-Forward. \label{term:ff}
+    \item[\textbf{GPIO}:] General Purpose Input/Output. \label{term:gpio}
+    \item[\textbf{HC-SR04}:] Ultrasonic Sensor Model. \label{term:hcsr04}
+    \item[\textbf{IDE}:] Integrated Development Environment. \label{term:ide}
+    \item[\textbf{IMU}:] Inertial Measurement Unit. \label{term:imu}
+    \item[\textbf{IR}:] Infrared. \label{term:ir}
+    \item[\textbf{L298N}:] H-Bridge Motor Driver Model. \label{term:l298n}
+    \item[\textbf{LDS}:] Laser Direct Structure. \label{term:lds}
+    \item[\textbf{LED}:] Light Emitting Diode. \label{term:led}
+    \item[\textbf{LiDAR}:] Light Detection and Ranging. \label{term:lidar}
+    \item[\textbf{Li-ion}:] Lithium-ion. \label{term:liion}
+    \item[\textbf{PCB}:] Printed Circuit Board. \label{term:pcb}
+    \item[\textbf{PID}:] Proportional-Integral-Derivative. \label{term:pid}
+    \item[\textbf{PLA}:] Polylactic Acid. \label{term:pla}
+    \item[\textbf{PWM}:] Pulse Width Modulation. \label{term:pwm}
+    \item[\textbf{ROS}:] Robot Operating System. \label{term:ros}
+    \item[\textbf{RPLidar}:] Rotating Light Detection and Ranging sensor model. \label{term:rplidar}
+    \item[\textbf{RPM}:] Revolutions Per Minute. \label{term:rpm}
+    \item[\textbf{SBC}:] Single-Board Computer. \label{term:sbc}
+    \item[\textbf{SLAM}:] Simultaneous Localization and Mapping. \label{term:slam}
+    \item[\textbf{UART}:] Universal Asynchronous Receiver-Transmitter. \label{term:uart}
+    \item[\textbf{VBUS}:] USB Voltage Bus. \label{term:vbus}
+    \item[\textbf{vSLAM}:] Visual Simultaneous Localization and Mapping. \label{term:vslam}
+\end{description}
+\clearpage
+
+
+% --- List of Symbols ---
+\chapter*{List of Symbols}
+\addcontentsline{toc}{chapter}{List of Symbols}
+\begin{description}
+    \item[\textbf{V}:] Voltage (\textit{Volts})
+    \item[\textbf{I}:] Current (\textit{Amperes})
+    \item[\textbf{P}:] Power (\textit{Watts})
+    \item[\textbf{R}:] Resistance (\textit{Ohms})
+    \item[\textbf{f}:] Frequency (\textit{Hertz})
+    \item[\textbf{T}:] Time Period (\textit{Seconds})
+    \item[\textbf{D}:] Duty Cycle
+    \item[\textbf{$\theta$}:] Angle (\textit{Degrees})
+    \item[\textbf{L}:] Length (\textit{cm/m})
+    \item[\textbf{W}:] Width (\textit{cm/m})
+    \item[\textbf{H}:] Height (\textit{cm/m})
+    \item[\textbf{m}:] Mass (\textit{kg/g})
+    \item[\textbf{gf.cm}:] Gram-force centimeter (\textit{Torque unit})
+\end{description}
+\clearpage

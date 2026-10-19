@@ -1,57 +1,29 @@
-# ========================
-# OS Generated Files
-# ========================
-.DS_Store
-Thumbs.db
-Desktop.ini
-ehthumbs.db
-$RECYCLE.BIN/
-
-# ========================
-# IDE / Editor
-# ========================
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-*.swp
-*~
-
-# ========================
-# Python
-# ========================
+# Python and tooling
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
 .venv/
-venv/
-env/
-dist/
-build/
-*.egg-info/
-.eggs/
+.pytest_cache/
+.ruff_cache/
 
-# ========================
-# MicroPython
-# ========================
+# MicroPython build output
 *.mpy
-.micropython/
-flash/
-boot_out.txt
 
-# ========================
-# Logs & Temporary
-# ========================
+# LaTeX build output (docs/thesis)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
 *.log
+*.lot
 *.out
+*.synctex.gz
+*.toc
 
-# ========================
-# Archives
-# ========================
-*.zip
-*.tar.gz
-*.tar.bz2
-*.rar
-*.7z
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,137 @@
+\documentclass[12pt, a4paper, oneside]{book}
+
+% === PACKAGES ===
+\usepackage[hidelinks, breaklinks=true]{hyperref} % Load hyperref once, early
+
+\usepackage{setspace}
+\usepackage{graphicx} % needed for images
+\usepackage[utf8]{inputenc} % Input encoding
+\usepackage[english]{babel} % For English thesis
+
+% Fix for "\iint already defined" error before loading amsmath
+\let\iint\relax
+\let\iiint\relax
+\let\iiiint\relax
+\let\idotsint\relax 
+% The lines above undefine these specific commands if they were previously defined by another package,
+% allowing amsmath to define them without conflict.
+
+\usepackage{amsmath} % For math symbols
+\usepackage{amsfonts} % For other math fonts/symbols
+\usepackage{amssymb} % For more math symbols
+\usepackage{geometry} % For adjusting margins
+\usepackage{appendix} % For better appendix handling with hyperref
+\usepackage{subcaption} % For subfigure environment
+\geometry{a4paper, margin=1.2in}
+\usepackage{longtable} % For the large component table
+\usepackage{tabularx} % For other tables
+\usepackage{times} % Font often used in theses
+\usepackage{float} % To control figure/table placement better e.g. [H]
+\usepackage{caption} % For better control over captions
+\usepackage{booktabs} % For nicer table lines
+\usepackage{xcolor} % Needed for color names
+\usepackage{listings} % Added for improved code listings
+\usepackage{rotating} % Added for landscape figures
+\usepackage{tikz} % Added for native flowcharts and diagrams
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+
+% Added packages for the component table
+\usepackage{array} % For \newcolumntype and better column control
+\usepackage{makecell} % For \makecell and \newline in cells
+\usepackage{colortbl} % For \cellcolor
+
+% Define raggedright paragraph column type to avoid underfull hbox warnings
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% === LISTINGS PACKAGE SETUP ===
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.98,0.98,0.98} % Light gray background for code
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize\ttfamily,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Python,
+    morekeywords={const, unique_id, ubinascii}, % Add MicroPython specific keywords
+    emph={BLEUART, PWM, Pin}, emphstyle=\color{blue}\bfseries, % Emphasize custom classes/key objects
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Symbol for continued lines
+    frame=tb, % Adds a top and bottom frame
+    framesep=3pt,
+    framerule=0.5pt,
+}
+\lstset{style=mystyle}
+
+
+% === PATHS ===
+% Define paths to avoid long file paths in includegraphics
+\newcommand{\litreviewpath}{images/literature/}
+\newcommand{\taskthreepath}{images/}
+
+
+% === GUC TEMPLATE DEFINITIONS ===
+\newcommand{\submissionDay}{22}
+\newcommand{\submissionMonth}{June}
+\newcommand{\submissionYear}{2025}
+\newcommand{\submissionDate}{\submissionDay~\submissionMonth,~\submissionYear}
+\newcommand{\typeOfThesis}{Bachelor Thesis}
+
+\newcommand{\titleOfThesisOne}{Design and Implementation of a Smart Cleaning Robot} % Title
+\newcommand{\authorOfThesis}{Andrew Khalil Samuel Abdelmalak} % My Name
+\newcommand{\supervisorOne}{Prof. Dr. Walid Atef Hafez Omran} % Supervisor
+\newcommand{\cosupervisor}{Dr. Hisham Mostafa El Sherif} % Co-Supervisor
+\newcommand{\reviewer}{Dr. M. A. Moustafa Hassan} % Reviewer
+
+% === Table specific settings and new commands from component list ===
+\setlength{\LTleft}{0pt plus 1fil}
+\setlength{\LTright}{0pt plus 1fil}
+\setlength{\tabcolsep}{5pt} % Column separation for longtable
+
+\definecolor{darkblue}{RGB}{0,0,128}
+\definecolor{lightgray}{RGB}{240,240,240}
+
+% ==== Electrical Totals ====
+\newcommand{\totalVoltage}{12V}      % Battery voltage
+\newcommand{\totalCurrent}{~2.2A}      % Recalculated total current @12V
+\newcommand{\totalPower}{~26W}       % Recalculated total power consumption
+
+% A little extra stretch to prevent warnings globally
+\setlength{\emergencystretch}{1em}
+
+
+% === DOCUMENT START ===
+\begin{document}
+
+% Front matter (title page, abstract, TOC, lists)
+\input{sections/frontmatter.tex}
+
+% Main content chapters
+\mainmatter % Switch to Arabic page numbering and reset chapter count for main body
+\input{sections/chapter1_introduction.tex}
+\input{sections/chapter2_background.tex}
+\input{sections/chapter3_mechanical.tex}
+\input{sections/chapter4_electrical_control.tex}
+\input{sections/chapter5_conclusion.tex}
+
+% References
+\input{sections/references.tex}
+
+% Appendices
+\appendix % Starts appendix section
+\input{sections/appendix_bom.tex}
+
+\end{document}
