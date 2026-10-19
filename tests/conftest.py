@@ -118,6 +118,7 @@ class FakeBLE:
     def __init__(self) -> None:
         self.handler: Callable[[int, tuple], None] | None = None
         self.rx = b""
+        self.advertise_calls = 0
         FakeBLE.instances.append(self)
 
     def active(self, state: bool) -> None:
@@ -131,6 +132,7 @@ class FakeBLE:
 
     def gap_advertise(self, interval_us: int, adv_data: bytes) -> None:
         self.adv_data = adv_data
+        self.advertise_calls += 1
 
     def gatts_read(self, handle: int) -> bytes:
         return self.rx

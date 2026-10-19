@@ -534,6 +534,8 @@ class BLEUART:
             if not self._connections:
                 ble_connected = False
                 emergency_stop()
+            # Advertising stops on connect; restart it so a phone can reconnect.
+            self._advertise()
 
         elif event == _IRQ_GATTS_WRITE:
             try:

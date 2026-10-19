@@ -102,6 +102,16 @@ def test_ble_disconnect_triggers_emergency_stop(robot, run_loop):
     assert motors_stopped(robot)
 
 
+def test_ble_disconnect_restarts_advertising(robot):
+    ble = FakeBLE()
+    robot.BLEUART(ble)
+    ble.handler(IRQ_CENTRAL_CONNECT, (7, 0, b""))
+    ble.handler(IRQ_CENTRAL_DISCONNECT, (7, 0, b""))
+    # Once at start-up and again after the disconnect, so a phone can
+    # find the robot without a reboot.
+    assert ble.advertise_calls == 2
+
+
 def test_ble_write_is_trimmed_and_uppercased(robot):
     ble = FakeBLE()
     robot.BLEUART(ble)
