@@ -28,6 +28,16 @@ uv run mpy-cross -o main.mpy firmware/main.py
 
 CI runs the same checks on every pull request, and a pull request with failing checks is not merged.
 
+## Build the thesis
+
+The LaTeX source in `docs/thesis/` mirrors the [Overleaf project](https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f), which builds with pdfLaTeX on TeX Live 2025. To build it locally with the same engine, run this from the repository root:
+
+```bash
+docker run --rm -v "$PWD/docs/thesis":/work -w /work texlive/texlive:TL2025-historic latexmk -pdf main.tex
+```
+
+The Thesis workflow runs the same build on every change to `docs/thesis/`.
+
 ## Make your change
 
 1. Create a branch from `main`, for example `git switch -c fix-horn-toggle`.
