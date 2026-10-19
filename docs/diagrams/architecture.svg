@@ -1,0 +1,78 @@
+<svg viewBox="0 0 1060 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="architecture-title architecture-desc">
+<title id="architecture-title">Smart Cleaning Robot hardware architecture</title>
+<desc id="architecture-desc">Block diagram: a phone, push button, ultrasonic sensor, and wheel encoders feed the Raspberry Pi Pico W, which drives the motors through an L298N H-bridge and switches the suction fan and status LED.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f5f5"/>
+<path d="M230,60 H312 Q320,60 320,68 V203 Q320,211 328,211 H360" fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+<rect x="243.4" y="40" width="55.2" height="12" rx="2" fill="#f5f5f5"/>
+<text x="271.0" y="49" fill="#7a8399" font-size="8" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.06em">BLE UART</text>
+<path d="M230,160 H272 Q280,160 280,168 V219 Q280,227 288,227 H360" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M230,310 H272 Q280,310 280,302 V251 Q280,243 288,243 H360" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M230,410 H312 Q320,410 320,402 V267 Q320,259 328,259 H360" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M560,211 H592 Q600,211 600,203 V136 Q600,128 608,128 H640" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M560,235 H640" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M560,259 H592 Q600,259 600,267 V334 Q600,342 608,342 H640" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M820,128 H868" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="40" y="28" width="190" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="40" y="28" width="190" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="48" y="34" width="25.6" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="60.8" y="43" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">APP</text>
+<text x="135.0" y="66.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Phone app</text>
+<text x="135.0" y="81.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">NRF Toolbox · BLE UART</text>
+<rect x="40" y="128" width="190" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="40" y="128" width="190" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="48" y="134" width="36.0" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="66.0" y="143" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">INPUT</text>
+<text x="135.0" y="166.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Push button</text>
+<text x="135.0" y="181.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">GP16 · toggles cleaning</text>
+<rect x="40" y="278" width="190" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="40" y="278" width="190" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="48" y="284" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="68.6" y="293" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">SENSOR</text>
+<text x="135.0" y="316.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Ultrasonic sensor</text>
+<text x="135.0" y="331.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">HC-SR04 · GP10 / GP11</text>
+<rect x="40" y="378" width="190" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="40" y="378" width="190" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="48" y="384" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="68.6" y="393" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">SENSOR</text>
+<text x="135.0" y="416.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Wheel encoders</text>
+<text x="135.0" y="431.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">20-slot optical · GP21 / GP20</text>
+<rect x="360" y="195" width="200" height="80" rx="6" fill="#f5f5f5"/>
+<rect x="360" y="195" width="200" height="80" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+<rect x="368" y="201" width="25.6" height="12" rx="2" fill="none" stroke="#eb6c36" stroke-width="0.8"/>
+<text x="380.8" y="210" fill="#eb6c36" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">MCU</text>
+<text x="460.0" y="241.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Raspberry Pi Pico W</text>
+<text x="460.0" y="256.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">MicroPython · main.py</text>
+<rect x="640" y="96" width="180" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="640" y="96" width="180" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="648" y="102" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="668.6" y="111" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">DRIVER</text>
+<text x="730.0" y="134.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">L298N H-bridge</text>
+<text x="730.0" y="149.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">PWM GP6/7 · DIR GP12-15</text>
+<rect x="640" y="203" width="180" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="640" y="203" width="180" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="648" y="209" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="668.6" y="218" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">OUTPUT</text>
+<text x="730.0" y="241.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Suction fan</text>
+<text x="730.0" y="256.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">12 V PS3 fan · GP8</text>
+<rect x="640" y="310" width="180" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="640" y="310" width="180" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="648" y="316" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="668.6" y="325" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">OUTPUT</text>
+<text x="730.0" y="348.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">Status LED</text>
+<text x="730.0" y="363.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">GP18 · status patterns</text>
+<rect x="868" y="96" width="160" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="868" y="96" width="160" height="64" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+<rect x="876" y="102" width="41.2" height="12" rx="2" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="0.8"/>
+<text x="896.6" y="111" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle" letter-spacing="0.08em">OUTPUT</text>
+<text x="948.0" y="134.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" text-anchor="middle">DC gear motors</text>
+<text x="948.0" y="149.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" text-anchor="middle">2 × 66 mm wheels</text>
+<line x1="32" y1="472" x2="1028" y2="472" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+<text x="32" y="492" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="112" y="483" width="20" height="12" rx="3" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="142" y="492" fill="#2d3142" font-size="9" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">Controller</text>
+<line x1="234.0" y1="489" x2="256.0" y2="489" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+<text x="264.0" y="492" fill="#2d3142" font-size="9" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">Wireless (BLE)</text>
+<line x1="378.4" y1="489" x2="400.4" y2="489" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="408.4" y="492" fill="#2d3142" font-size="9" font-family="'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">Wired signal or power stage</text>
+</svg>

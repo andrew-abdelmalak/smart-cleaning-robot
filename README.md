@@ -1,293 +1,178 @@
 # Smart Cleaning Robot
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![MicroPython](https://img.shields.io/badge/MicroPython-1.23-blue.svg)](https://micropython.org/)
-[![Lint](https://github.com/andrew-abdelmalak/smart-cleaning-robot/actions/workflows/lint.yml/badge.svg)](https://github.com/andrew-abdelmalak/smart-cleaning-robot/actions/workflows/lint.yml)
+MicroPython firmware for a low-cost floor-cleaning robot built on a Raspberry Pi Pico W, with Bluetooth Low Energy (BLE) remote control, ultrasonic obstacle avoidance, and feed-forward plus PID wheel control. It was my bachelor thesis project at the German University in Cairo (GUC), 2025.
 
-A MicroPython-based autonomous and manual smart cleaning robot built on the Raspberry Pi Pico W.
-The system delivers closed-loop differential-drive motion, BLE remote control, and obstacle-aware
-autonomous navigation at a build cost of approximately **$80 USD** — 60–90 % cheaper than
-comparable commercial platforms.
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Key Results](#key-results)
-3. [System Architecture](#system-architecture)
-4. [Hardware Specifications](#hardware-specifications)
-5. [Pin Mapping](#pin-mapping)
-6. [BLE Command Reference](#ble-command-reference)
-7. [Repository Structure](#repository-structure)
-8. [Getting Started](#getting-started)
-9. [Autonomous State Machine](#autonomous-state-machine)
-10. [Control Design](#control-design)
-11. [Author](#author)
-12. [Acknowledgments](#acknowledgments)
-13. [Thesis](#thesis)
-
----
-
-## Overview
+[![CI](https://github.com/andrew-abdelmalak/smart-cleaning-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/andrew-abdelmalak/smart-cleaning-robot/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/andrew-abdelmalak/smart-cleaning-robot)](LICENSE)
 
 <p align="center">
-  <img src="docs/thesis/images/photos/robot_assembled_side.jpg" width="480" alt="Assembled Smart Cleaning Robot"/>
+  <img src="docs/media/robot-driving.webp" width="320" alt="The round black robot driving across a wooden floor toward a doormat">
+  &nbsp;
+  <img src="docs/thesis/images/photos/robot_assembled_side.jpg" width="320" alt="Side view of the assembled robot: a 35 cm round black chassis with a filter on top">
 </p>
 
-The Smart Cleaning Robot integrates three subsystems on a custom 3D-printed PLA chassis:
+The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The whole build cost about 80 USD (3,950 EGP).
 
-| Subsystem | Technology |
+## Results
+
+From the prototype tests in the [thesis](docs/thesis/thesis.pdf) (Table 4.2 and section 5.1.1):
+
+| Metric | Result |
 |---|---|
-| Locomotion | Differential drive · L298N H-bridge · PID wheel balancing |
-| Sensing | HC-SR04 ultrasonic (obstacle) · quadrature wheel encoders |
-| Communication | BLE UART GATT service · NRF Toolbox compatible |
-| Cleaning | 12 V PS3 Slim fan mounted centrally |
-| Electronics | Custom KiCad PCB · Raspberry Pi Pico W |
+| Battery runtime | More than 60 minutes of continuous autonomous operation |
+| BLE range | Stable indoor connection at more than 5 m |
+| Straight-line driving | PID correction noticeably reduced drift compared with open loop |
+| Stall recovery | Detected a stuck wheel and recovered in simulated stuck conditions |
+| Cleaning | Collected light debris (paper, dust) from hard floors |
+| System power | About 26 W at 12 V (estimate from component ratings) |
+| Build cost | About 80 USD, against 100 to 900 USD for the commercial robots compared |
+| Size and weight | 35 cm diameter, 17 cm high, 2.65 kg |
 
----
+## How it works
 
-## Key Results
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg">
+  <img src="docs/diagrams/architecture.svg" alt="Block diagram: a phone, push button, ultrasonic sensor, and wheel encoders feed the Raspberry Pi Pico W, which drives the motors through an L298N H-bridge and switches the suction fan and status LED.">
+</picture>
 
-| Metric | Value |
-|---|---|
-| Build cost | ~$80 USD |
-| Battery runtime | > 60 minutes |
-| Obstacle detection threshold | 15 cm |
-| Encoder pulses per turn (pivot) | 39 pulses |
-| Straight-line PID gains (P / I / D) | 0.8 / 0.15 / 0.25 |
-| Right-wheel feed-forward trim | 0.75 |
-| BLE link | Stable at ≥ 10 m indoor range |
+The firmware is one file, [`firmware/main.py`](firmware/main.py), that runs a 20 ms control loop. Each pass handles, in priority order:
 
-### Cost Comparison
-
-| Platform | Approx. Cost (USD) |
-|---|---|
-| This robot | ~$80 |
-| Typical commercial cleaning robot | $200 – $800 |
-| Savings | 60 – 90 % |
-
----
-
-## System Architecture
-
-<p align="center">
-  <img src="docs/thesis/images/screenshots/control_flowchart.png" width="560" alt="Autonomous Control Flowchart"/>
-</p>
-
-The firmware (`main.py`) runs entirely on MicroPython and is structured as:
-
-```
-BLE UART service (interrupt-driven)
-        │
-        ▼
-  Command dispatcher
-  ├── Manual mode  → direct motor commands
-  └── Auto mode    → Autonomous FSM
-                        IDLE → START_FWD → FWD
-                                             │ obstacle?
-                                        START_AVOID → AVOID → STALL_TURN
-```
-
----
-
-## Hardware Specifications
-
-| Component | Part | Notes |
+| Priority | Condition | Action |
 |---|---|---|
-| Microcontroller | Raspberry Pi Pico W | MicroPython firmware |
-| Motor driver | L298N dual H-bridge | PWM speed + direction pins |
-| Drive motors | 2× DC gear motors | Differential drive |
-| Wheel encoders | 2× optical encoders | Interrupt-counted |
-| Distance sensor | HC-SR04 ultrasonic | TRIG / ECHO |
-| Cleaning fan | PS3 Slim fan (12 V) | Centrally mounted |
-| Chassis | Custom PLA | 3D-printed, SolidWorks CAD |
-| PCB | Custom KiCad board | On-board power regulation |
-| Power | Li-ion battery pack | > 60 min runtime |
+| 1 | Horn on | Buzz the motors at 10 % duty as an audible horn |
+| 2 | Manual command active | Drive forward, backward, or pivot |
+| 3 | Autonomous mode on | Advance the cleaning state machine one step |
+| 4 | Otherwise | Make sure both motors are stopped |
 
-<p align="center">
-  <img src="docs/thesis/images/cad/chassis_open_isometric.jpg" width="420" alt="SolidWorks CAD — Isometric View"/>
-  &nbsp;&nbsp;
-  <img src="docs/thesis/images/photos/robot_bottom_photo.jpg" width="420" alt="Assembled Robot — Bottom View"/>
-</p>
+### Autonomous cleaning
 
-<p align="center">
-  <img src="docs/thesis/images/photos/internal_wiring.jpg" width="560" alt="Internal Wiring"/>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/state-machine-dark.svg">
+  <img src="docs/diagrams/state-machine.svg" alt="State machine: from IDLE, CLEAN starts forward driving; an obstacle closer than 15 cm triggers a 39-pulse left pivot, and a wheel stall longer than 800 ms triggers reverse then the same pivot, both returning to forward driving.">
+</picture>
 
----
+### Motion control
 
-## Pin Mapping
+A pure PID controller on the wheel encoders drew enough current to cause brownouts that stalled a motor. The final design uses a feed-forward motor model for most of the drive and keeps the PID only as a small correction to each wheel's target speed.
 
-| Signal | GPIO |
-|---|---|
-| Motor A PWM (ENA) | 6 |
-| Motor B PWM (ENB) | 7 |
-| Motor A direction IN1 | 12 |
-| Motor A direction IN2 | 13 |
-| Motor B direction IN3 | 14 |
-| Motor B direction IN4 | 15 |
-| Left encoder | 21 |
-| Right encoder | 20 |
-| Fan output | 8 |
-| Status LED | 18 |
-| Ultrasonic TRIG | 10 |
-| Ultrasonic ECHO | 11 |
-| User button | 16 |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/control-loop-dark.svg">
+  <img src="docs/diagrams/control-loop.svg" alt="Control loop: the target speed passes through a feed-forward motor model to set PWM, the wheel encoders measure the left-right pulse difference, and a PID adds a correction to the target speed of each wheel.">
+</picture>
 
----
+| Loop | Purpose | P / I / D |
+|---|---|---|
+| Straight | Keep both wheels at the same distance travelled | 0.8 / 0.15 / 0.25 |
+| Turn progress | Reach the target pivot of 39 encoder pulses | 0.6 / 0.1 / 0.2 |
+| Turn balance | Share the pivot between both wheels | 1.5 / 0.05 / 0.3 |
 
-## BLE Command Reference
+The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 27, kV 0.66; right: kS 30, kV 0.61), with a right-wheel trim of 0.75 and duty capped at 95 %. All integrals are clamped to ±15.
 
-Connect to the device advertising as **`PicoRobot-XXXX`** using any BLE UART client
-(e.g. NRF Toolbox).
+## Hardware
 
-| GATT Role | UUID |
-|---|---|
-| Service | `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` |
-| TX (notify, robot → host) | `6E400003-B5A3-F393-E0A9-E50E24DCCA9E` |
-| RX (write, host → robot) | `6E400002-B5A3-F393-E0A9-E50E24DCCA9E` |
+| Part | Component | Pins (GP = Pico GPIO) |
+|---|---|---|
+| Controller | Raspberry Pi Pico W | |
+| Motor driver | L298N dual H-bridge | ENA 6, ENB 7, IN1 to IN4 12 to 15 |
+| Drive | 2 TT DC gear motors, 66 mm wheels | |
+| Wheel encoders | 20-slot optical discs, one channel per wheel | Left 21, right 20 |
+| Obstacle sensor | HC-SR04 ultrasonic | TRIG 10, ECHO 11 |
+| Suction | PS3 Slim fan, 12 V, on/off through its PWM wire | 8 |
+| Status LED | Green LED | 18 |
+| Button | Push button to GND, internal pull-up | 16 |
+| Power | 12 V Li-ion pack, LM2596S buck converter to 5 V | |
+| Chassis and PCB | 3D-printed PLA+, custom KiCad PCB | |
+
+The thesis has the full bill of materials (Appendix A), the CAD views, and the PCB schematic and layout.
+
+## Getting started
+
+You need a Raspberry Pi Pico W with [MicroPython for the Pico W](https://micropython.org/download/RPI_PICO_W/), [`mpremote`](https://docs.micropython.org/en/latest/reference/mpremote.html), and a phone with [nRF Toolbox](https://www.nordicsemi.com/Products/Development-tools/nrf-toolbox) or another BLE UART app.
+
+1. Flash MicroPython: hold BOOTSEL while you connect USB, then copy the `.uf2` file to the drive that appears.
+2. Copy the firmware to the board as `main.py`, so it runs at boot:
+
+   ```bash
+   mpremote cp firmware/main.py :main.py
+   ```
+
+3. Reset the board. It advertises as `PicoRobot-XXXX`, where `XXXX` comes from the board ID.
+4. Connect from nRF Toolbox (UART) and send the commands below.
+
+> [!WARNING]
+> Test with the wheels off the ground first, and check the motor wiring before you enable autonomous mode. The gains and thresholds are tuned for this chassis; expect to retune `OBSTACLE_THRESHOLD_CM`, `TURN_PULSES`, and the PID gains for another build.
 
 ### Commands
 
-| Command | Action |
+Send these as text over the Nordic UART Service (writes go to RX characteristic `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`). Case and surrounding spaces are ignored.
+
+| Command | Effect |
 |---|---|
-| `F` | Move forward |
-| `B` | Move backward |
-| `L` | Turn left (pivot) |
-| `R` | Turn right (pivot) |
-| `S` | Stop |
-| `A` | Toggle autonomous mode |
-| `X` | Emergency stop |
-| `+` / `-` | Increase / decrease speed |
+| `FORWARD` | Drive straight with PID correction. Stops with the horn if an obstacle is closer than 15 cm |
+| `BACKWARD`, `LEFT`, `RIGHT` | Drive backward, or pivot in place |
+| Same command again | Brake and stop |
+| `CLEAN` | From a full stop: toggle autonomous cleaning (fan on, state machine running). While moving: emergency stop |
+| `FAN` | Toggle the suction fan (only while stopped) |
+| `HORN` | Toggle the horn. Also silences the obstacle alarm |
 
-<p align="center">
-  <img src="docs/thesis/images/screenshots/nrf_toolbox_ui.jpg" width="340" alt="NRF Toolbox BLE Controller"/>
-</p>
+The push button does the same as `CLEAN`. Losing the BLE connection stops the robot.
 
----
+| Status LED | Meaning |
+|---|---|
+| Off | Idle, no phone connected |
+| Slow flash | Phone connected |
+| Solid | Autonomous cleaning |
+| Rapid flash | Horn on or path blocked |
 
-## Repository Structure
+## Development
 
-```
-smart-cleaning-robot/
-├── main.py                        # MicroPython firmware — robot entry point
-├── docs/
-│   ├── Thesis.pdf                 # Full bachelor thesis
-│   └── figures/                   # Thesis figures (extracted)
-│       ├── assembled_robot.jpeg
-│       ├── assembled_robot_bottom.jpeg
-│       ├── assembled_robot_internal.jpeg
-│       ├── chassis_cad.jpeg
-│       ├── ble_controller.jpeg
-│       ├── control_flowchart.png
-│       └── state_machine.jpeg
-├── .github/
-│   └── workflows/
-│       └── lint.yml               # Ruff linter CI
-├── LICENSE                        # MIT
-└── README.md
+The tests run the real firmware on your computer against fake `machine`, `bluetooth`, and `time` modules, with a simulated clock that wraps like MicroPython's. They cover the motion math, the command handling, the safety stops, and the state machine. You need [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run mpy-cross -o main.mpy firmware/main.py
 ```
 
----
+CI runs the same steps on every push and pull request.
 
-## Getting Started
+```text
+firmware/main.py      MicroPython firmware (copy to the board as main.py)
+tests/                Host-side tests and hardware fakes
+docs/diagrams/        Diagrams used in this README
+docs/media/           Demo clips from the thesis presentation
+docs/thesis/          Thesis PDF and its LaTeX source
+```
 
-### Prerequisites
+## Known limitations
 
-- Raspberry Pi Pico W flashed with [MicroPython ≥ 1.23](https://micropython.org/download/RPI_PICO_W/)
-- [Thonny IDE](https://thonny.org/) or `mpremote` for file transfer
-- BLE-capable device with NRF Toolbox (iOS / Android) or equivalent
+These come from the hardware and the hand tuning, and need the robot to fix and verify:
 
-### Installation
-
-1. Flash MicroPython firmware onto the Pico W (hold BOOTSEL while connecting USB).
-2. Transfer `main.py` to the board root filesystem:
-
-   ```bash
-   # Using mpremote
-   mpremote connect /dev/ttyACM0 fs cp main.py :main.py
-   ```
-
-3. Reboot the board. It will advertise as `PicoRobot-XXXX`.
-4. Connect via BLE and send commands from the table above.
-
-### Safety Notes
-
-- Test with wheels off the ground before floor operation.
-- Verify motor wiring polarity before enabling autonomous mode.
-- Tune `OBSTACLE_THRESHOLD_CM`, PID gains, and `TURN_PULSES` to your specific build.
-
----
-
-## Autonomous State Machine
-
-<p align="center">
-  <img src="docs/thesis/images/screenshots/software_flowchart.jpg" width="520" alt="FSM Block Diagram"/>
-</p>
-
-| State | Behaviour |
-|---|---|
-| `IDLE` | Waiting for autonomous start command |
-| `START_FWD` | Initialises encoder counters and PID |
-| `FWD` | Drives straight with closed-loop PID correction |
-| `START_AVOID` | Obstacle detected — begins pivot |
-| `AVOID` | Executes pivot turn (39 encoder pulses) |
-| `STALL_TURN` | Recovers from wheel stall during avoidance |
-
----
-
-## Control Design
-
-The drive loop uses **feed-forward + PID** correction to keep both wheels at equal speed:
-
-- **Feed-forward**: right-wheel trim constant (`RIGHT_TRIM = 0.75`) compensates for mechanical asymmetry.
-- **PID straight** (`P=0.8, I=0.15, D=0.25`): drives error between left and right encoder counts to zero.
-- **Target speed**: `MOVEMENT_PPS = 75.0` pulses-per-second.
-- **Stall watchdog**: if encoder counts do not increment within the watchdog window, the robot halts and raises an emergency stop.
-
----
-
-## Author
-
-| Name | Affiliation |
-|---|---|
-| Andrew Khalil Samuel Abdelmalak | Faculty of Engineering & Materials Sciences, GUC |
-
----
-
-## Acknowledgments
-
-**Supervisors**
-
-| Role | Name |
-|---|---|
-| Supervisor | Prof. Dr. Walid Atef Hafez Omran |
-| Co-Supervisor | Dr. Hisham Mostafa El Sherif |
-| Reviewer | Dr. M. A. Moustafa Hassan |
-
----
+- Navigation is reactive. The robot pivots left at every obstacle; it does not map the room or follow a coverage pattern.
+- The turn-balance PID adds the two wheel counts rather than comparing them, because the single-channel encoders cannot tell direction. I tuned the gains with it working that way on the prototype.
+- A disconnected ultrasonic sensor reads as a clear path. A missing echo returns 999 cm.
+- Pivots have no timeout. A dead encoder during a turn keeps the robot spinning.
+- Braking always pulses backward, whatever the direction of travel.
+- BLE has no pairing, so any phone in range can connect and drive the robot.
+- Cleaning: no check valve and no brushes, so debris can spill and embedded dirt stays.
 
 ## Thesis
 
-The full bachelor thesis is available at [`docs/thesis/thesis.pdf`](docs/thesis/thesis.pdf).
+*Design and Implementation of a Smart Cleaning Robot*, Andrew Khalil Samuel Abdelmalak, Faculty of Engineering and Materials Sciences, German University in Cairo, June 2025.
 
-> *Design and Implementation of a Smart Cleaning Robot* — Andrew Khalil Samuel Abdelmalak,
-> Faculty of Engineering & Materials Sciences, German University in Cairo, June 2025.
+- [Thesis PDF](docs/thesis/thesis.pdf)
+- [LaTeX source](docs/thesis/main.tex), also on [Overleaf (read only)](https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f)
 
----
+The firmware has changed since the thesis: it now has tests, CI, and fixes for five control-logic bugs. See [CHANGELOG.md](CHANGELOG.md).
 
-## References
+Supervised by Prof. Dr. Walid Atef Hafez Omran, co-supervised by Dr. Hisham Mostafa El Sherif, and reviewed by Dr. M. A. Moustafa Hassan.
 
-1. H. Choset, "Coverage for robotics — A survey of recent results," *Annals of Mathematics and Artificial Intelligence*, vol. 31, pp. 113–126, 2001.
-2. C. Cadena *et al.*, "Past, Present, and Future of Simultaneous Localization and Mapping," *IEEE Transactions on Robotics*, vol. 32, no. 6, pp. 1309–1332, 2016.
-3. H. Durrant-Whyte and T. Bailey, "Simultaneous Localization and Mapping: Part I," *IEEE Robotics & Automation Magazine*, vol. 13, no. 2, pp. 99–110, 2006.
-4. Raspberry Pi Ltd, "Raspberry Pi Pico W Datasheet," 2022. [Online]. Available: https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf
-5. STMicroelectronics, "L298 Dual Full-Bridge Driver Datasheet," Rev 10, 2013. [Online]. Available: https://www.st.com/resource/en/datasheet/l298.pdf
-6. Cytron Technologies, "HC-SR04 Ultrasonic Sensor Datasheet." [Online]. Available: https://docs.cytron.io/
+## Contributing and security
 
----
+This is a finished thesis project, so I do not plan new features. Bug reports and fixes are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 Andrew Abdelmalak
+Released under the [MIT License](LICENSE).
