@@ -1,8 +1,17 @@
+"""Smart Cleaning Robot firmware for the Raspberry Pi Pico W (MicroPython).
+
+Drives a two-wheel differential robot with an L298N motor driver, single-channel
+optical wheel encoders, an HC-SR04 ultrasonic sensor, a suction fan, a status
+LED, and a push button. Commands arrive over a Nordic UART BLE service. Motion
+uses feed-forward PWM plus PID correction on the encoder counts.
+"""
+
 import time
-from machine import Pin, PWM, unique_id
+
 import bluetooth
-from micropython import const
 import ubinascii
+from machine import PWM, Pin, unique_id
+from micropython import const
 
 # ===========================================================
 # BLUETOOTH CONSTANTS
@@ -150,12 +159,14 @@ emergency_active = False
 # ===========================================================
 
 
-def left_encoder_isr(pin):
+def left_encoder_isr(pin: Pin) -> None:
+    """Count one rising edge of the left wheel encoder."""
     global left_pulses
     left_pulses += 1
 
 
-def right_encoder_isr(pin):
+def right_encoder_isr(pin: Pin) -> None:
+    """Count one rising edge of the right wheel encoder."""
     global right_pulses
     right_pulses += 1
 
@@ -169,7 +180,18 @@ right_enc.irq(trigger=Pin.IRQ_RISING, handler=right_encoder_isr)
 
 
 def ff_pwm(pps_target: float, wheel: str) -> int:
-    """Feed-forward PWM calculation"""
+    """Estimate the PWM duty that drives one wheel at a target speed.
+
+    A linear motor model, duty = kS + kV * speed, fitted per wheel. kS covers
+    static friction and kV the speed gain.
+
+    Args:
+        pps_target: Target wheel speed in encoder pulses per second.
+        wheel: "L" for the left wheel; any other value means the right wheel.
+
+    Returns:
+        Duty cycle in percent, capped at 95.
+    """
     if wheel == "L":
         kS, kV = 27, 0.66
     else:
@@ -177,8 +199,15 @@ def ff_pwm(pps_target: float, wheel: str) -> int:
     return min(95, int(kS + kV * pps_target))
 
 
-def set_motor_pwm(left_pwm, right_pwm, direction="stop"):
-    """Set motor PWM with direction control"""
+def set_motor_pwm(left_pwm: float, right_pwm: float, direction: str = "stop") -> None:
+    """Set both motor duties and the H-bridge direction pins.
+
+    Args:
+        left_pwm: Left wheel duty in percent (0 to 100).
+        right_pwm: Right wheel duty in percent (0 to 100).
+        direction: "forward", "backward", "pivot_left", or "pivot_right".
+            Any other value stops both motors.
+    """
     global last_motor_time
 
     if left_pwm > 0 or right_pwm > 0:
@@ -217,8 +246,19 @@ def set_motor_pwm(left_pwm, right_pwm, direction="stop"):
     enb.duty_u16(int(phys_right_pwm / 100 * 65535))
 
 
-def straight_motion(direction, start_left=None, start_right=None):
-    """Execute straight motion with PID"""
+def straight_motion(
+    direction: str, start_left: int | None = None, start_right: int | None = None
+) -> None:
+    """Drive straight, with PID correction when start counts are given.
+
+    The PID error is the difference in pulses each wheel has travelled since
+    the start counts. Without start counts the drive is feed-forward only.
+
+    Args:
+        direction: "forward" or "backward".
+        start_left: Left encoder count at the start of the run.
+        start_right: Right encoder count at the start of the run.
+    """
     global straight_integral, straight_last_error
 
     if start_left is None or start_right is None:
@@ -263,13 +303,21 @@ def straight_motion(direction, start_left=None, start_right=None):
     set_motor_pwm(left_pwm, right_pwm, direction)
 
 
-def pivot_motion(dir, angle_pulses=None):
-    """Execute pivot with dual PID"""
+def pivot_motion(side: str, angle_pulses: int | None = None) -> None:
+    """Pivot in place, with two PID loops when a target angle is given.
+
+    The progress PID drives the total pulse count toward angle_pulses. The
+    balance PID adjusts the split between the wheels. Without a target the
+    pivot is feed-forward only.
+
+    Args:
+        side: "left" or "right".
+        angle_pulses: Target pivot size in total encoder pulses.
+    """
     global progress_integral, progress_last_error
     global balance_integral, balance_last_error
-    global pivot_start_left, pivot_start_right
 
-    direction = "pivot_left" if dir == "left" else "pivot_right"
+    direction = "pivot_left" if side == "left" else "pivot_right"
 
     if angle_pulses is None:
         # Simple feed-forward
@@ -304,8 +352,9 @@ def pivot_motion(dir, angle_pulses=None):
         + GAINS_TURN_PROGRESS["D"] * progress_derivative
     )
 
-    # Balance PID
-    if dir == "left":
+    # Balance PID. Both encoders count up only, so this sums the deltas
+    # rather than differencing them (see README, Known limitations).
+    if side == "left":
         balance_error = -left_delta - right_delta
     else:
         balance_error = left_delta + right_delta
@@ -336,14 +385,14 @@ def pivot_motion(dir, angle_pulses=None):
     set_motor_pwm(left_pwm, right_pwm, direction)
 
 
-def horn_buzz():
-    """Motor buzz for horn"""
+def horn_buzz() -> None:
+    """Buzz the motors at low duty as an audible horn."""
     buzz_duty = 10
     set_motor_pwm(buzz_duty, buzz_duty * RIGHT_TRIM, "forward")
 
 
-def apply_brake():
-    """Apply brake pulse"""
+def apply_brake() -> None:
+    """Brake with a short reverse pulse, then stop both motors."""
     set_motor_pwm(BRAKE_DUTY_PERCENT, BRAKE_DUTY_PERCENT * RIGHT_TRIM, "backward")
     time.sleep_ms(BRAKE_DURATION_MS)
     set_motor_pwm(0, 0, "stop")
@@ -354,16 +403,16 @@ def apply_brake():
 # ===========================================================
 
 
-def stop_all_movement():
-    """Emergency stop"""
+def stop_all_movement() -> None:
+    """Stop the motors and clear the manual command and autonomous state."""
     global manual_command, autonomous_state
     manual_command = None
     autonomous_state = "IDLE"
     set_motor_pwm(0, 0, "stop")
 
 
-def is_full_stop():
-    """Check if at full stop"""
+def is_full_stop() -> bool:
+    """Return True when both motors are off and have been for 100 ms."""
     current = time.ticks_ms()
     motors_stopped = ena.duty_u16() == 0 and enb.duty_u16() == 0
     time_since = time.ticks_diff(current, last_motor_time)
@@ -371,10 +420,10 @@ def is_full_stop():
     return motors_stopped and time_since >= 100
 
 
-def emergency_stop():
-    """Full emergency stop with state reset"""
+def emergency_stop() -> None:
+    """Stop everything, leave autonomous mode, and reset all PID state."""
     global emergency_active, autonomous_mode, autonomous_state
-    global manual_command, forward_blocked, horn_active
+    global manual_command, horn_active
     global straight_integral, straight_last_error
     global progress_integral, progress_last_error
     global balance_integral, balance_last_error
@@ -408,8 +457,14 @@ def emergency_stop():
 # ===========================================================
 
 
-def get_distance_cm():
-    """Ultrasonic distance with timeout"""
+def get_distance_cm() -> float:
+    """Measure the distance to the nearest obstacle with the HC-SR04.
+
+    Returns:
+        Distance in cm, or 999 when no echo starts or ends within 30 ms.
+        A disconnected sensor therefore reads as a clear path (see README,
+        Known limitations).
+    """
     trig.low()
     time.sleep_us(2)
     trig.high()
@@ -432,12 +487,15 @@ def get_distance_cm():
     return (time.ticks_diff(t2, t1) * 0.0343) / 2
 
 
-def toggle_horn():
-    """Toggle horn state.
+def toggle_horn() -> bool:
+    """Toggle the horn.
 
     The horn buzzes the motors, so the robot never reads as fully stopped
     while it sounds. Switching it on needs a full stop; switching it off
     is always allowed.
+
+    Returns:
+        True if the horn state changed.
     """
     global horn_active
 
@@ -451,8 +509,12 @@ def toggle_horn():
     return True
 
 
-def update_led():
-    """Update LED based on state"""
+def update_led() -> None:
+    """Set the status LED pattern from the robot state.
+
+    Rapid flash: obstacle block or horn. Solid: autonomous mode. Slow flash:
+    BLE connected. Off: idle.
+    """
     global last_led_toggle, led_state
     current = time.ticks_ms()
 
@@ -476,12 +538,9 @@ def update_led():
         led.off()
     elif led_state == "SOLID_ON":
         led.on()
-    elif led_state == "SLOW_FLASH":
-        if time.ticks_diff(current, last_led_toggle) >= LED_SLOW_FLASH_MS:
-            led.toggle()
-            last_led_toggle = current
-    elif led_state == "RAPID_FLASH":
-        if time.ticks_diff(current, last_led_toggle) >= LED_RAPID_FLASH_MS:
+    else:
+        period = LED_SLOW_FLASH_MS if led_state == "SLOW_FLASH" else LED_RAPID_FLASH_MS
+        if time.ticks_diff(current, last_led_toggle) >= period:
             led.toggle()
             last_led_toggle = current
 
@@ -492,9 +551,14 @@ def update_led():
 
 
 class BLEUART:
-    """Bluetooth UART service"""
+    """Nordic UART Service peripheral that receives text commands.
 
-    def __init__(self, ble_obj, name=_ADVERTISING_NAME):
+    Each write to the RX characteristic is decoded, stripped, upper-cased,
+    and stored in last_ble_command for the control loop. Losing the last
+    connection triggers an emergency stop.
+    """
+
+    def __init__(self, ble_obj: bluetooth.BLE, name: str = _ADVERTISING_NAME) -> None:
         self._ble = ble_obj
         self._ble.active(True)
         self._ble.irq(self._irq_handler)
@@ -511,15 +575,15 @@ class BLEUART:
         )
         self._advertise()
 
-    def _advertise(self):
-        """Start advertising"""
+    def _advertise(self) -> None:
+        """Start connectable advertising every 100 ms."""
         try:
             self._ble.gap_advertise(100_000, adv_data=self._adv_payload)
-        except Exception:
-            pass
+        except OSError as e:
+            print("[BLE] advertise failed:", e)
 
-    def _irq_handler(self, event, data):
-        """Handle BLE events"""
+    def _irq_handler(self, event: int, data: tuple) -> None:
+        """Track connections and store each received command."""
         global ble_connected, last_ble_command
 
         if event == _IRQ_CENTRAL_CONNECT:
@@ -542,7 +606,7 @@ class BLEUART:
                 last_ble_command = (
                     self._ble.gatts_read(self._rx_handle).decode().strip().upper()
                 )
-            except Exception:
+            except UnicodeError:
                 last_ble_command = ""
 
 
