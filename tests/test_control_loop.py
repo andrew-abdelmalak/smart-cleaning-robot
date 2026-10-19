@@ -119,3 +119,9 @@ def test_horn_command_switches_the_horn_on(robot, run_loop):
     run_loop(13, {10: "HORN"})
     assert robot.horn_active
     assert robot.enb.duty_u16() == duty(10)
+
+
+def test_horn_command_switches_the_horn_off_again(robot, run_loop):
+    run_loop(20, {10: "HORN", 15: "HORN"})
+    assert not robot.horn_active
+    assert motors_stopped(robot)

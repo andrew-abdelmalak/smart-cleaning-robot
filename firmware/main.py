@@ -431,10 +431,15 @@ def get_distance_cm():
 
 
 def toggle_horn():
-    """Toggle horn state"""
+    """Toggle horn state.
+
+    The horn buzzes the motors, so the robot never reads as fully stopped
+    while it sounds. Switching it on needs a full stop; switching it off
+    is always allowed.
+    """
     global horn_active
 
-    if not is_full_stop():
+    if not horn_active and not is_full_stop():
         return False
 
     horn_active = not horn_active
@@ -608,8 +613,7 @@ def main_program_loop():
                     fan.toggle()
 
             elif command == "HORN":
-                if is_full_stop():
-                    toggle_horn()
+                toggle_horn()
 
             # Obstacle clearing
             elif command == "FORWARD" and forward_blocked:
