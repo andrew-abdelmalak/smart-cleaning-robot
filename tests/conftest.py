@@ -15,36 +15,46 @@ from collections.abc import Callable, Iterator
 
 import pytest
 
+IRQ_CENTRAL_CONNECT = 1
+IRQ_CENTRAL_DISCONNECT = 2
+IRQ_GATTS_WRITE = 3
+
 
 class LoopExit(Exception):
     """Raised by the fake clock to stop ``main_program_loop`` after N sleeps."""
+
+
+TICKS_PERIOD = 2**30  # MicroPython ticks wrap at this value on the rp2 port
 
 
 class FakeClock:
     """Microsecond clock that advances on every read and every sleep.
 
     Each ``ticks_us`` read advances 10 us, so busy-wait loops such as the
-    ultrasonic echo wait always terminate.
+    ultrasonic echo wait always terminate. ``ticks_*`` values wrap and
+    compare like MicroPython's, so a test can start the clock just before
+    the wrap to catch code that subtracts ticks directly.
     """
 
-    def __init__(self) -> None:
-        self.us = 0
+    def __init__(self, start_ms: int = 0) -> None:
+        self.us = start_ms * 1000
         self.on_sleep: Callable[[int], None] | None = None
 
     def ticks_us(self) -> int:
         self.us += 10
-        return self.us
+        return self.us % TICKS_PERIOD
 
     def ticks_ms(self) -> int:
-        return self.us // 1000
+        return (self.us // 1000) % TICKS_PERIOD
 
     @staticmethod
     def ticks_diff(a: int, b: int) -> int:
-        return a - b
+        half = TICKS_PERIOD // 2
+        return (a - b + half) % TICKS_PERIOD - half
 
     @staticmethod
     def ticks_add(a: int, b: int) -> int:
-        return a + b
+        return (a + b) % TICKS_PERIOD
 
     def sleep_us(self, us: int) -> None:
         self.us += us
@@ -240,6 +250,14 @@ def run_loop(robot, clock: FakeClock) -> Callable[..., list[str]]:
         states: list[str] = []
         count = 0
 
+        def send_ble(text: str) -> None:
+            # Deliver the command through the firmware's real BLE IRQ path.
+            ble = FakeBLE.instances[-1]
+            if not robot.ble_connected:
+                ble.handler(IRQ_CENTRAL_CONNECT, (1, 0, b""))
+            ble.rx = text.encode()
+            ble.handler(IRQ_GATTS_WRITE, (1, 2))
+
         def on_sleep(ms: int) -> None:
             nonlocal count
             count += 1
@@ -255,8 +273,7 @@ def run_loop(robot, clock: FakeClock) -> Callable[..., list[str]]:
             if callable(event):
                 event()
             elif event:
-                robot.ble_connected = True
-                robot.last_ble_command = event
+                send_ble(event)
             if count >= sleeps:
                 raise LoopExit
 

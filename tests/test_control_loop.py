@@ -5,11 +5,12 @@ Each test drives the real loop on simulated hardware for a fixed number of
 accepted after the motors have been idle for 100 ms.
 """
 
-from conftest import FakeBLE
-
-IRQ_CENTRAL_CONNECT = 1
-IRQ_CENTRAL_DISCONNECT = 2
-IRQ_GATTS_WRITE = 3
+from conftest import (
+    IRQ_CENTRAL_CONNECT,
+    IRQ_CENTRAL_DISCONNECT,
+    IRQ_GATTS_WRITE,
+    FakeBLE,
+)
 
 
 def duty(percent: float) -> int:
@@ -94,9 +95,8 @@ def test_stalled_wheels_trigger_reverse_and_turn(robot, run_loop):
 
 def test_ble_disconnect_triggers_emergency_stop(robot, run_loop):
     run_loop(15, {10: "FORWARD"})
-    ble = FakeBLE.instances[0]
-    ble.handler(IRQ_CENTRAL_CONNECT, (7, 0, b""))
-    ble.handler(IRQ_CENTRAL_DISCONNECT, (7, 0, b""))
+    # run_loop connected as handle 1 to deliver FORWARD.
+    FakeBLE.instances[0].handler(IRQ_CENTRAL_DISCONNECT, (1, 0, b""))
     assert not robot.ble_connected
     assert robot.manual_command is None
     assert motors_stopped(robot)
@@ -110,6 +110,14 @@ def test_ble_disconnect_restarts_advertising(robot):
     # Once at start-up and again after the disconnect, so a phone can
     # find the robot without a reboot.
     assert ble.advertise_calls == 2
+
+
+def test_ble_write_with_invalid_utf8_is_ignored(robot):
+    ble = FakeBLE()
+    robot.BLEUART(ble)
+    ble.rx = b"\xff\xfe"
+    ble.handler(IRQ_GATTS_WRITE, (7, 2))
+    assert robot.last_ble_command == ""
 
 
 def test_ble_write_is_trimmed_and_uppercased(robot):
