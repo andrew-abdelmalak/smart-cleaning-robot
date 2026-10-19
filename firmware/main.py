@@ -35,10 +35,8 @@ _UART_SERVICE_DEFINITION = (
     (_UART_TX_CHAR_UUID, _UART_RX_CHAR_UUID),
 )
 
-# Generate unique device name
-uid_bytes = unique_id()
-unique_suffix = ubinascii.hexlify(uid_bytes[-2:]).decode("utf-8")
-_ADVERTISING_NAME = f"PicoRobot-{unique_suffix.upper()}"
+# Unique device name from the last two bytes of the board ID, e.g. PicoRobot-3C33
+_ADVERTISING_NAME = "PicoRobot-" + ubinascii.hexlify(unique_id()[-2:]).decode().upper()
 
 # ===========================================================
 # HARDWARE CONFIGURATION
@@ -150,9 +148,8 @@ last_check_left = 0
 last_check_right = 0
 next_stall_check = 0
 
-# Enhanced safety
+# Last time either motor had non-zero duty, from time.ticks_ms()
 last_motor_time = 0
-emergency_active = False
 
 # ===========================================================
 # ENCODER HANDLERS
@@ -246,6 +243,32 @@ def set_motor_pwm(left_pwm: float, right_pwm: float, direction: str = "stop") ->
     enb.duty_u16(int(phys_right_pwm / 100 * 65535))
 
 
+def _pid(gains: dict, error: float, integral: float, last_error: float) -> tuple:
+    """Run one PID update with the integral clamped to INTEGRAL_CLAMP_LIMIT.
+
+    Args:
+        gains: Dict with "P", "I", and "D" gains.
+        error: Current error.
+        integral: Integral before this update.
+        last_error: Error from the previous update.
+
+    Returns:
+        (adjustment, new_integral).
+    """
+    integral += error
+    if abs(integral) > INTEGRAL_CLAMP_LIMIT:
+        integral = INTEGRAL_CLAMP_LIMIT if integral > 0 else -INTEGRAL_CLAMP_LIMIT
+    adjustment = (
+        gains["P"] * error + gains["I"] * integral + gains["D"] * (error - last_error)
+    )
+    return adjustment, integral
+
+
+def _drive_pps(left_pps: float, right_pps: float, direction: str) -> None:
+    """Drive both wheels at target speeds through the feed-forward model."""
+    set_motor_pwm(ff_pwm(abs(left_pps), "L"), ff_pwm(abs(right_pps), "R"), direction)
+
+
 def straight_motion(
     direction: str, start_left: int | None = None, start_right: int | None = None
 ) -> None:
@@ -262,45 +285,19 @@ def straight_motion(
     global straight_integral, straight_last_error
 
     if start_left is None or start_right is None:
-        # Simple feed-forward
-        left_pps = MOVEMENT_PPS
-        right_pps = MOVEMENT_PPS * RIGHT_TRIM
-
-        left_pwm = ff_pwm(left_pps, "L")
-        right_pwm = ff_pwm(right_pps, "R")
-
-        set_motor_pwm(left_pwm, right_pwm, direction)
+        _drive_pps(MOVEMENT_PPS, MOVEMENT_PPS * RIGHT_TRIM, direction)
         return
 
-    # Positional error
+    # Positive when the left wheel has travelled further
     error = (left_pulses - start_left) - (right_pulses - start_right)
-
-    # Integral with clamp
-    straight_integral += error
-    if abs(straight_integral) > INTEGRAL_CLAMP_LIMIT:
-        straight_integral = (
-            INTEGRAL_CLAMP_LIMIT if straight_integral > 0 else -INTEGRAL_CLAMP_LIMIT
-        )
-
-    # Derivative
-    derivative = error - straight_last_error
+    adjustment, straight_integral = _pid(
+        GAINS_STRAIGHT, error, straight_integral, straight_last_error
+    )
     straight_last_error = error
 
-    # PID output
-    adjustment = (
-        GAINS_STRAIGHT["P"] * error
-        + GAINS_STRAIGHT["I"] * straight_integral
-        + GAINS_STRAIGHT["D"] * derivative
+    _drive_pps(
+        MOVEMENT_PPS - adjustment, MOVEMENT_PPS * RIGHT_TRIM + adjustment, direction
     )
-
-    # Apply corrections
-    left_pps = MOVEMENT_PPS - adjustment
-    right_pps = (MOVEMENT_PPS * RIGHT_TRIM) + adjustment
-
-    left_pwm = ff_pwm(abs(left_pps), "L")
-    right_pwm = ff_pwm(abs(right_pps), "R")
-
-    set_motor_pwm(left_pwm, right_pwm, direction)
 
 
 def pivot_motion(side: str, angle_pulses: int | None = None) -> None:
@@ -320,37 +317,18 @@ def pivot_motion(side: str, angle_pulses: int | None = None) -> None:
     direction = "pivot_left" if side == "left" else "pivot_right"
 
     if angle_pulses is None:
-        # Simple feed-forward
-        left_pps = MOVEMENT_PPS
-        right_pps = MOVEMENT_PPS * RIGHT_TRIM
-
-        left_pwm = ff_pwm(left_pps, "L")
-        right_pwm = ff_pwm(right_pps, "R")
-
-        set_motor_pwm(left_pwm, right_pwm, direction)
+        _drive_pps(MOVEMENT_PPS, MOVEMENT_PPS * RIGHT_TRIM, direction)
         return
 
-    # Calculate deltas
     left_delta = left_pulses - pivot_start_left
     right_delta = right_pulses - pivot_start_right
 
-    # Progress PID
-    total_progress = abs(left_delta) + abs(right_delta)
-    progress_error = angle_pulses - total_progress
-    progress_integral += progress_error
-    if abs(progress_integral) > INTEGRAL_CLAMP_LIMIT:
-        progress_integral = (
-            INTEGRAL_CLAMP_LIMIT if progress_integral > 0 else -INTEGRAL_CLAMP_LIMIT
-        )
-
-    progress_derivative = progress_error - progress_last_error
-    progress_last_error = progress_error
-
-    progress_adj = (
-        GAINS_TURN_PROGRESS["P"] * progress_error
-        + GAINS_TURN_PROGRESS["I"] * progress_integral
-        + GAINS_TURN_PROGRESS["D"] * progress_derivative
+    # Progress PID: pulses still to go
+    progress_error = angle_pulses - (abs(left_delta) + abs(right_delta))
+    progress_adj, progress_integral = _pid(
+        GAINS_TURN_PROGRESS, progress_error, progress_integral, progress_last_error
     )
+    progress_last_error = progress_error
 
     # Balance PID. Both encoders count up only, so this sums the deltas
     # rather than differencing them (see README, Known limitations).
@@ -359,30 +337,15 @@ def pivot_motion(side: str, angle_pulses: int | None = None) -> None:
     else:
         balance_error = left_delta + right_delta
 
-    balance_integral += balance_error
-    if abs(balance_integral) > INTEGRAL_CLAMP_LIMIT:
-        balance_integral = (
-            INTEGRAL_CLAMP_LIMIT if balance_integral > 0 else -INTEGRAL_CLAMP_LIMIT
-        )
-
-    balance_derivative = balance_error - balance_last_error
+    balance_adj, balance_integral = _pid(
+        GAINS_TURN_BALANCE, balance_error, balance_integral, balance_last_error
+    )
     balance_last_error = balance_error
 
-    balance_adj = (
-        GAINS_TURN_BALANCE["P"] * balance_error
-        + GAINS_TURN_BALANCE["I"] * balance_integral
-        + GAINS_TURN_BALANCE["D"] * balance_derivative
-    )
-
-    # Apply adjustments
     base_power = MOVEMENT_PPS + progress_adj
-    left_pps = base_power + balance_adj
-    right_pps = (base_power * RIGHT_TRIM) - balance_adj
-
-    left_pwm = ff_pwm(abs(left_pps), "L")
-    right_pwm = ff_pwm(abs(right_pps), "R")
-
-    set_motor_pwm(left_pwm, right_pwm, direction)
+    _drive_pps(
+        base_power + balance_adj, base_power * RIGHT_TRIM - balance_adj, direction
+    )
 
 
 def horn_buzz() -> None:
@@ -411,46 +374,25 @@ def stop_all_movement() -> None:
     set_motor_pwm(0, 0, "stop")
 
 
+def motors_idle() -> bool:
+    """Return True when both motors have zero duty."""
+    return ena.duty_u16() == 0 and enb.duty_u16() == 0
+
+
 def is_full_stop() -> bool:
     """Return True when both motors are off and have been for 100 ms."""
-    current = time.ticks_ms()
-    motors_stopped = ena.duty_u16() == 0 and enb.duty_u16() == 0
-    time_since = time.ticks_diff(current, last_motor_time)
-
-    return motors_stopped and time_since >= 100
+    return motors_idle() and time.ticks_diff(time.ticks_ms(), last_motor_time) >= 100
 
 
 def emergency_stop() -> None:
     """Stop everything, leave autonomous mode, and reset all PID state."""
-    global emergency_active, autonomous_mode, autonomous_state
-    global manual_command, horn_active, forward_blocked
-    global straight_integral, straight_last_error
-    global progress_integral, progress_last_error
-    global balance_integral, balance_last_error
+    global autonomous_mode, horn_active, forward_blocked
 
-    emergency_active = True
-
-    # Stop motion
-    set_motor_pwm(0, 0, "stop")
-
-    # Reset states
-    autonomous_mode = False
-    autonomous_state = "IDLE"
-    manual_command = None
-    horn_active = False
-    forward_blocked = False
-
-    # Reset PID controllers
-    straight_integral = straight_last_error = 0
-    progress_integral = progress_last_error = 0
-    balance_integral = balance_last_error = 0
-
-    # Turn off fan
+    stop_all_movement()
+    autonomous_mode = horn_active = forward_blocked = False
+    start_straight()
+    start_pivot()
     fan.off()
-
-    # Clear emergency flag
-    time.sleep_ms(50)
-    emergency_active = False
 
 
 # ===========================================================
@@ -488,26 +430,21 @@ def get_distance_cm() -> float:
     return (time.ticks_diff(t2, t1) * 0.0343) / 2
 
 
-def toggle_horn() -> bool:
+def toggle_horn() -> None:
     """Toggle the horn.
 
     The horn buzzes the motors, so the robot never reads as fully stopped
     while it sounds. Switching it on needs a full stop; switching it off
     is always allowed.
-
-    Returns:
-        True if the horn state changed.
     """
     global horn_active
 
     if not horn_active and not is_full_stop():
-        return False
+        return
 
     horn_active = not horn_active
     if not horn_active:
         stop_all_movement()
-
-    return True
 
 
 def update_led() -> None:
@@ -565,7 +502,7 @@ class BLEUART:
         self._ble.irq(self._irq_handler)
 
         # Register service
-        ((self._tx_handle, self._rx_handle),) = self._ble.gatts_register_services(
+        ((_, self._rx_handle),) = self._ble.gatts_register_services(
             (_UART_SERVICE_DEFINITION,)
         )
         self._connections = set()
@@ -594,8 +531,7 @@ class BLEUART:
 
         elif event == _IRQ_CENTRAL_DISCONNECT:
             conn_handle, _, _ = data
-            if conn_handle in self._connections:
-                self._connections.discard(conn_handle)
+            self._connections.discard(conn_handle)
             if not self._connections:
                 ble_connected = False
                 last_ble_command = ""  # never run a command after reconnect
@@ -654,8 +590,6 @@ def handle_command(command: str) -> bool:
     """
     global autonomous_mode, autonomous_state, manual_command
     global forward_blocked, horn_active
-    global straight_start_left, straight_start_right
-    global straight_integral, straight_last_error
 
     if command == "CLEAN":
         if not is_full_stop():
@@ -700,9 +634,7 @@ def handle_command(command: str) -> bool:
             stop_all_movement()
             manual_command = command
             if command == "FORWARD":
-                straight_start_left = left_pulses
-                straight_start_right = right_pulses
-                straight_integral = straight_last_error = 0
+                start_straight()
     return False
 
 
@@ -733,6 +665,16 @@ def drive_manual() -> bool:
     return False
 
 
+def start_straight() -> None:
+    """Record the straight-run start counts and reset the straight PID."""
+    global straight_start_left, straight_start_right
+    global straight_integral, straight_last_error
+
+    straight_start_left = left_pulses
+    straight_start_right = right_pulses
+    straight_integral = straight_last_error = 0
+
+
 def start_pivot() -> None:
     """Record the pivot start counts and reset both pivot PID controllers."""
     global pivot_start_left, pivot_start_right
@@ -760,15 +702,11 @@ def run_autonomous_step(now: int) -> bool:
         True when the iteration must end early, after a brake.
     """
     global autonomous_state
-    global straight_start_left, straight_start_right
-    global straight_integral, straight_last_error
     global stall_start_time, last_check_left, last_check_right
     global next_stall_check
 
     if autonomous_state == "START_FWD":
-        straight_start_left = left_pulses
-        straight_start_right = right_pulses
-        straight_integral = straight_last_error = 0
+        start_straight()
         stall_start_time = 0
         last_check_left = left_pulses
         last_check_right = right_pulses
@@ -808,7 +746,7 @@ def run_autonomous_step(now: int) -> bool:
         start_pivot()
         autonomous_state = "AVOID"
 
-    elif autonomous_state in ("AVOID", "STALL_TURN"):
+    elif autonomous_state == "AVOID" or autonomous_state == "STALL_TURN":
         turned = (left_pulses - pivot_start_left) + (right_pulses - pivot_start_right)
         if abs(turned) >= TURN_PULSES:
             apply_brake()
@@ -826,10 +764,6 @@ def control_step() -> None:
     """
     now = time.ticks_ms()
 
-    if emergency_active:
-        time.sleep_ms(20)
-        return
-
     command = read_command()
     if command and handle_command(command):
         return
@@ -846,7 +780,7 @@ def control_step() -> None:
     elif autonomous_mode:
         if run_autonomous_step(now):
             return
-    elif ena.duty_u16() > 0 or enb.duty_u16() > 0:
+    elif not motors_idle():
         stop_all_movement()
 
     update_led()
@@ -869,9 +803,7 @@ if __name__ == "__main__":
         main_program_loop()
     except Exception as e:
         print(f"[FATAL] Exception: {e}")
-        emergency_stop()
     finally:
         print("[SYSTEM] Program terminated.")
         emergency_stop()
-        fan.off()
         led.off()
