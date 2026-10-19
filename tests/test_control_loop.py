@@ -79,6 +79,15 @@ def test_clean_while_moving_is_an_emergency_stop(robot, run_loop):
     assert motors_stopped(robot)
 
 
+def test_emergency_stop_also_clears_an_obstacle_block(robot, run_loop):
+    # CLEAN while the horn buzzes is an emergency stop; it must end the
+    # buzzing, not leave forward_blocked set with the motors at 10 %.
+    robot.sonar.distance_cm = 10
+    run_loop(20, {10: "FORWARD", 15: "CLEAN"})
+    assert not robot.forward_blocked
+    assert motors_stopped(robot)
+
+
 def test_autonomous_mode_pivots_left_around_an_obstacle(robot, run_loop):
     robot.sonar.distance_cm = 10
     states = run_loop(60, {10: "CLEAN"})

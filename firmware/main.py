@@ -423,7 +423,7 @@ def is_full_stop() -> bool:
 def emergency_stop() -> None:
     """Stop everything, leave autonomous mode, and reset all PID state."""
     global emergency_active, autonomous_mode, autonomous_state
-    global manual_command, horn_active
+    global manual_command, horn_active, forward_blocked
     global straight_integral, straight_last_error
     global progress_integral, progress_last_error
     global balance_integral, balance_last_error
@@ -438,6 +438,7 @@ def emergency_stop() -> None:
     autonomous_state = "IDLE"
     manual_command = None
     horn_active = False
+    forward_blocked = False
 
     # Reset PID controllers
     straight_integral = straight_last_error = 0
