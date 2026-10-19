@@ -18,7 +18,7 @@ def clock() -> FakeClock:
 @pytest.fixture
 def robot(robot, clock):
     # The robot has been up for days: its motors last ran 1 s ago.
-    robot.last_motor_time = clock.ticks_ms() - 1000
+    robot.last_motor_time = clock.ticks_add(clock.ticks_ms(), -1000)
     return robot
 
 

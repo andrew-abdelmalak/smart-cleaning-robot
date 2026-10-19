@@ -10,11 +10,8 @@ from conftest import (
     IRQ_CENTRAL_DISCONNECT,
     IRQ_GATTS_WRITE,
     FakeBLE,
+    duty,
 )
-
-
-def duty(percent: float) -> int:
-    return int(percent / 100 * 65535)
 
 
 def motors_stopped(robot) -> bool:
@@ -118,9 +115,7 @@ def test_ble_disconnect_triggers_emergency_stop(robot, run_loop):
     assert motors_stopped(robot)
 
 
-def test_ble_disconnect_restarts_advertising(robot):
-    ble = FakeBLE()
-    robot.BLEUART(ble)
+def test_ble_disconnect_restarts_advertising(robot, ble):
     ble.handler(IRQ_CENTRAL_CONNECT, (7, 0, b""))
     ble.handler(IRQ_CENTRAL_DISCONNECT, (7, 0, b""))
     # Once at start-up and again after the disconnect, so a phone can
@@ -128,11 +123,9 @@ def test_ble_disconnect_restarts_advertising(robot):
     assert ble.advertise_calls == 2
 
 
-def test_ble_disconnect_discards_an_unread_command(robot):
+def test_ble_disconnect_discards_an_unread_command(robot, ble):
     # A command that arrives just before a disconnect must not run after
     # the next connection.
-    ble = FakeBLE()
-    robot.BLEUART(ble)
     ble.handler(IRQ_CENTRAL_CONNECT, (7, 0, b""))
     ble.rx = b"FORWARD"
     ble.handler(IRQ_GATTS_WRITE, (7, 2))
@@ -140,17 +133,13 @@ def test_ble_disconnect_discards_an_unread_command(robot):
     assert robot.last_ble_command == ""
 
 
-def test_ble_write_with_invalid_utf8_is_ignored(robot):
-    ble = FakeBLE()
-    robot.BLEUART(ble)
+def test_ble_write_with_invalid_utf8_is_ignored(robot, ble):
     ble.rx = b"\xff\xfe"
     ble.handler(IRQ_GATTS_WRITE, (7, 2))
     assert robot.last_ble_command == ""
 
 
-def test_ble_write_is_trimmed_and_uppercased(robot):
-    ble = FakeBLE()
-    robot.BLEUART(ble)
+def test_ble_write_is_trimmed_and_uppercased(robot, ble):
     ble.rx = b" forward\r\n"
     ble.handler(IRQ_GATTS_WRITE, (7, 2))
     assert robot.last_ble_command == "FORWARD"

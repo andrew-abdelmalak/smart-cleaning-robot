@@ -20,6 +20,11 @@ IRQ_CENTRAL_DISCONNECT = 2
 IRQ_GATTS_WRITE = 3
 
 
+def duty(percent: float) -> int:
+    """16-bit PWM duty for a percentage, as ``set_motor_pwm`` computes it."""
+    return int(percent / 100 * 65535)
+
+
 class LoopExit(Exception):
     """Raised by the fake clock to stop ``main_program_loop`` after N sleeps."""
 
@@ -72,7 +77,6 @@ class FakePin:
     IRQ_RISING = 1
 
     def __init__(self, pin_id: int, mode: int = -1, pull: int | None = None) -> None:
-        self.id = pin_id
         self._value = 1 if pull == FakePin.PULL_UP else 0
         self.handler: Callable[["FakePin"], None] | None = None
 
@@ -101,7 +105,6 @@ class FakePWM:
     """Minimal ``machine.PWM`` that records frequency and 16-bit duty."""
 
     def __init__(self, pin: FakePin) -> None:
-        self.pin = pin
         self._freq = 0
         self._duty = 0
 
@@ -141,7 +144,6 @@ class FakeBLE:
         return ((1, 2),)
 
     def gap_advertise(self, interval_us: int, adv_data: bytes) -> None:
-        self.adv_data = adv_data
         self.advertise_calls += 1
 
     def gatts_read(self, handle: int) -> bytes:
@@ -225,9 +227,16 @@ def robot(clock: FakeClock, monkeypatch: pytest.MonkeyPatch) -> Iterator:
     module.trig = sonar
     module.echo = sonar
     module.sonar = sonar
-    module.clock = clock
     yield module
     sys.modules.pop("main", None)
+
+
+@pytest.fixture
+def ble(robot) -> FakeBLE:
+    """A BLEUART service on its own fake radio, outside the main loop."""
+    radio = FakeBLE()
+    robot.BLEUART(radio)
+    return radio
 
 
 @pytest.fixture

@@ -7,10 +7,7 @@ to the control math fails here first.
 
 import pytest
 
-
-def duty(percent: float) -> int:
-    """16-bit PWM duty for a percentage, as ``set_motor_pwm`` computes it."""
-    return int(percent / 100 * 65535)
+from conftest import duty
 
 
 def pins(robot) -> tuple[int, int, int, int]:
