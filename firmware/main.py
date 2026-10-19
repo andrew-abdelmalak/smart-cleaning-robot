@@ -75,6 +75,7 @@ INTEGRAL_CLAMP_LIMIT = 15.0
 STALL_TIME_MS = 800
 STALL_CHECK_INTERVAL_MS = 250
 FAN_SPINUP_DELAY_MS = 500
+STALL_REVERSE_MS = 700
 
 # LED timing
 LED_SLOW_FLASH_MS = 500
@@ -115,8 +116,9 @@ straight_integral, straight_last_error = 0, 0
 progress_integral, progress_last_error = 0, 0
 balance_integral, balance_last_error = 0, 0
 
-# Pivot tracking
-pivot_start_L, pivot_start_R = 0, 0
+# Encoder counts at the start of a straight run or a pivot
+straight_start_left, straight_start_right = 0, 0
+pivot_start_left, pivot_start_right = 0, 0
 
 # Operating modes
 autonomous_mode = False
@@ -265,7 +267,7 @@ def pivot_motion(dir, angle_pulses=None):
     """Execute pivot with dual PID"""
     global progress_integral, progress_last_error
     global balance_integral, balance_last_error
-    global pivot_start_L, pivot_start_R
+    global pivot_start_left, pivot_start_right
 
     direction = "pivot_left" if dir == "left" else "pivot_right"
 
@@ -281,8 +283,8 @@ def pivot_motion(dir, angle_pulses=None):
         return
 
     # Calculate deltas
-    left_delta = left_pulses - pivot_start_L
-    right_delta = right_pulses - pivot_start_R
+    left_delta = left_pulses - pivot_start_left
+    right_delta = right_pulses - pivot_start_right
 
     # Progress PID
     total_progress = abs(left_delta) + abs(right_delta)
@@ -547,243 +549,247 @@ class BLEUART:
 # ===========================================================
 
 
-def main_program_loop():
-    """Main control loop"""
+def read_command() -> str:
+    """Return the next command from BLE or the button.
+
+    A button press (active low, 50 ms debounce) maps to CLEAN and blocks
+    until release, so one press gives one command.
+
+    Returns:
+        The command string, or "" when there is none.
+    """
+    global last_ble_command
+
+    command = ""
+    if ble_connected and last_ble_command:
+        command = last_ble_command
+        last_ble_command = ""
+
+    if button.value() == 0:
+        time.sleep_ms(50)
+        if button.value() == 0:
+            command = "CLEAN"
+            while button.value() == 0:
+                time.sleep_ms(10)
+    return command
+
+
+def handle_command(command: str) -> bool:
+    """Apply one user command to the robot state.
+
+    Args:
+        command: One of CLEAN, FAN, HORN, FORWARD, BACKWARD, LEFT, RIGHT.
+            Unknown commands are ignored.
+
+    Returns:
+        True when the rest of this loop iteration must be skipped.
+    """
     global autonomous_mode, autonomous_state, manual_command
-    global last_ble_command, left_pulses, right_pulses
+    global forward_blocked, horn_active
+    global straight_start_left, straight_start_right
     global straight_integral, straight_last_error
+
+    if command == "CLEAN":
+        if not is_full_stop():
+            emergency_stop()
+            return True
+        autonomous_mode = not autonomous_mode
+        if autonomous_mode:
+            fan.on()
+            time.sleep_ms(FAN_SPINUP_DELAY_MS)
+            autonomous_state = "START_FWD"
+        else:
+            fan.off()
+
+    elif command == "FAN":
+        if is_full_stop():
+            fan.toggle()
+
+    elif command == "HORN":
+        toggle_horn()
+
+    elif command == "FORWARD" and forward_blocked:
+        # Clear the block if the path is now free, else silence the horn.
+        if get_distance_cm() >= OBSTACLE_THRESHOLD_CM:
+            forward_blocked = False
+            horn_active = False
+            return True
+        if horn_active:
+            horn_active = False
+            return True
+
+    elif forward_blocked and command in ("BACKWARD", "LEFT", "RIGHT"):
+        # Moving away from the obstacle clears the block.
+        forward_blocked = False
+        horn_active = False
+
+    # Manual movement: repeating the active command brakes and stops.
+    if not autonomous_mode and command in ("FORWARD", "BACKWARD", "LEFT", "RIGHT"):
+        if manual_command == command:
+            apply_brake()
+            manual_command = None
+        else:
+            stop_all_movement()
+            manual_command = command
+            if command == "FORWARD":
+                straight_start_left = left_pulses
+                straight_start_right = right_pulses
+                straight_integral = straight_last_error = 0
+    return False
+
+
+def drive_manual() -> bool:
+    """Run one step of the active manual command.
+
+    FORWARD uses encoder PID and stops with the horn when an obstacle is
+    closer than OBSTACLE_THRESHOLD_CM. The other commands are feed-forward.
+
+    Returns:
+        True when an obstacle blocked FORWARD and the iteration must end.
+    """
+    global forward_blocked, horn_active, manual_command
+
+    if manual_command == "FORWARD":
+        if get_distance_cm() < OBSTACLE_THRESHOLD_CM:
+            forward_blocked = True
+            horn_active = True
+            manual_command = None
+            return True
+        straight_motion("forward", straight_start_left, straight_start_right)
+    elif manual_command == "BACKWARD":
+        straight_motion("backward")
+    elif manual_command == "LEFT":
+        pivot_motion("left")
+    elif manual_command == "RIGHT":
+        pivot_motion("right")
+    return False
+
+
+def start_pivot() -> None:
+    """Record the pivot start counts and reset both pivot PID controllers."""
+    global pivot_start_left, pivot_start_right
     global progress_integral, progress_last_error
     global balance_integral, balance_last_error
-    global pivot_start_L, pivot_start_R
-    global forward_blocked, horn_active
-    global stall_start_time, last_check_left
-    global last_check_right, next_stall_check
 
-    # Initialize
-    left_start, right_start = 0, 0
-    ble_uart = BLEUART(bluetooth.BLE())  # noqa: F841 — must be instantiated to register BLE IRQ
+    pivot_start_left = left_pulses
+    pivot_start_right = right_pulses
+    progress_integral = progress_last_error = 0
+    balance_integral = balance_last_error = 0
 
-    while True:
-        current_time = time.ticks_ms()
 
-        # Emergency check
-        if emergency_active:
-            time.sleep_ms(20)
-            continue
+def run_autonomous_step(now: int) -> bool:
+    """Advance the autonomous cleaning state machine by one step.
 
-        # ===============================================
-        # INPUT PROCESSING
-        # ===============================================
+    The robot drives straight (FWD) until an obstacle is closer than
+    OBSTACLE_THRESHOLD_CM, then pivots left TURN_PULSES encoder pulses
+    (AVOID) and drives on. If a wheel stops counting for STALL_TIME_MS, it
+    reverses, brakes, and makes the same pivot (STALL_TURN).
 
-        command = ""
+    Args:
+        now: Timestamp of this loop iteration from time.ticks_ms().
 
-        # Check BLE commands
-        if ble_connected and last_ble_command:
-            command = last_ble_command
-            last_ble_command = ""
+    Returns:
+        True when the iteration must end early, after a brake.
+    """
+    global autonomous_state
+    global straight_start_left, straight_start_right
+    global straight_integral, straight_last_error
+    global stall_start_time, last_check_left, last_check_right
+    global next_stall_check
 
-        # Check button
-        if button.value() == 0:
-            time.sleep_ms(50)
-            if button.value() == 0:
-                command = "CLEAN"
-                while button.value() == 0:
-                    time.sleep_ms(10)
+    if autonomous_state == "START_FWD":
+        straight_start_left = left_pulses
+        straight_start_right = right_pulses
+        straight_integral = straight_last_error = 0
+        stall_start_time = 0
+        last_check_left = left_pulses
+        last_check_right = right_pulses
+        next_stall_check = time.ticks_add(now, STALL_CHECK_INTERVAL_MS)
+        autonomous_state = "FWD"
 
-        # ===============================================
-        # COMMAND PROCESSING
-        # ===============================================
+    elif autonomous_state == "FWD":
+        if get_distance_cm() < OBSTACLE_THRESHOLD_CM:
+            apply_brake()
+            autonomous_state = "START_AVOID"
+            return True
 
-        if command:
-            if command == "CLEAN":
-                if not is_full_stop():
-                    emergency_stop()
-                    continue
-                else:
-                    autonomous_mode = not autonomous_mode
-                    if autonomous_mode:
-                        fan.on()
-                        time.sleep_ms(FAN_SPINUP_DELAY_MS)
-                        autonomous_state = "START_FWD"
-                    else:
-                        fan.off()
+        straight_motion("forward", straight_start_left, straight_start_right)
 
-            elif command == "FAN":
-                if is_full_stop():
-                    fan.toggle()
-
-            elif command == "HORN":
-                toggle_horn()
-
-            # Obstacle clearing
-            elif command == "FORWARD" and forward_blocked:
-                current_dist = get_distance_cm()
-                if current_dist >= OBSTACLE_THRESHOLD_CM:
-                    forward_blocked = False
-                    horn_active = False
-                    continue
-                elif horn_active:
-                    horn_active = False
-                    continue
-
-            # Clear block when moving away
-            elif forward_blocked and command in ["BACKWARD", "LEFT", "RIGHT"]:
-                forward_blocked = False
-                horn_active = False
-
-            # Manual commands with toggle
-            if not autonomous_mode and command in [
-                "FORWARD",
-                "BACKWARD",
-                "LEFT",
-                "RIGHT",
-            ]:
-                if manual_command == command:
-                    # Toggle: brake and stop
+        # Stall check: a wheel whose count has not changed since the last
+        # check is stalled; recover once the stall lasts STALL_TIME_MS.
+        if time.ticks_diff(now, next_stall_check) >= 0:
+            if left_pulses == last_check_left or right_pulses == last_check_right:
+                if stall_start_time == 0:
+                    stall_start_time = now
+                elif time.ticks_diff(now, stall_start_time) > STALL_TIME_MS:
+                    print("STALL DETECTED! RECOVERING...")
+                    straight_motion("backward")
+                    time.sleep_ms(STALL_REVERSE_MS)
                     apply_brake()
-                    manual_command = None
-                else:
-                    stop_all_movement()
-                    manual_command = command
-                    if command == "FORWARD":
-                        left_start = left_pulses
-                        right_start = right_pulses
-                        straight_integral = straight_last_error = 0
-                    elif command in ["LEFT", "RIGHT"]:
-                        # Initialize pivot
-                        pivot_start_L = left_pulses
-                        pivot_start_R = right_pulses
-                        balance_integral = balance_last_error = 0
-
-        # ===============================================
-        # MAIN LOOP EXECUTION (Priority Order)
-        # ===============================================
-
-        # Priority 1: Horn/Obstacle block
-        if horn_active or forward_blocked:
-            horn_buzz()
-            update_led()
-            time.sleep_ms(20)
-            continue
-
-        # Priority 2: Manual commands
-        elif manual_command:
-            if manual_command == "FORWARD":
-                # Check obstacles
-                if get_distance_cm() < OBSTACLE_THRESHOLD_CM:
-                    forward_blocked = True
-                    horn_active = True
-                    manual_command = None
-                    continue
-                straight_motion("forward", left_start, right_start)
-            elif manual_command == "BACKWARD":
-                straight_motion("backward")
-            elif manual_command == "LEFT":
-                pivot_motion("left")
-            elif manual_command == "RIGHT":
-                pivot_motion("right")
-
-        # Priority 3: Autonomous FSM
-        elif autonomous_mode:
-            if autonomous_state == "START_FWD":
-                # Reset references
-                left_start = left_pulses
-                right_start = right_pulses
-                straight_integral = straight_last_error = 0
-
-                # Reset stall detection
+                    start_pivot()
+                    autonomous_state = "STALL_TURN"
+                    return True
+            else:
                 stall_start_time = 0
-                last_check_left = left_pulses
-                last_check_right = right_pulses
-                next_stall_check = time.ticks_add(current_time, STALL_CHECK_INTERVAL_MS)
 
-                autonomous_state = "FWD"
+            last_check_left = left_pulses
+            last_check_right = right_pulses
+            next_stall_check = time.ticks_add(now, STALL_CHECK_INTERVAL_MS)
 
-            elif autonomous_state == "FWD":
-                # Check obstacles
-                if get_distance_cm() < OBSTACLE_THRESHOLD_CM:
-                    apply_brake()
-                    autonomous_state = "START_AVOID"
-                    continue
+    elif autonomous_state == "START_AVOID":
+        start_pivot()
+        autonomous_state = "AVOID"
 
-                # Execute motion
-                straight_motion("forward", left_start, right_start)
-
-                # Stall detection
-                stall_time_elapsed = time.ticks_diff(current_time, next_stall_check)
-                if stall_time_elapsed >= 0:
-                    if (
-                        left_pulses == last_check_left
-                        or right_pulses == last_check_right
-                    ):
-                        if stall_start_time == 0:
-                            stall_start_time = current_time
-                        elif (
-                            time.ticks_diff(current_time, stall_start_time)
-                            > STALL_TIME_MS
-                        ):
-                            print("STALL DETECTED! RECOVERING...")
-                            # Recovery sequence
-                            straight_motion("backward")
-                            time.sleep_ms(700)
-                            apply_brake()
-
-                            # Reset for stall turn
-                            pivot_start_L = left_pulses
-                            pivot_start_R = right_pulses
-                            progress_integral = 0
-                            progress_last_error = 0
-                            balance_integral = balance_last_error = 0
-                            autonomous_state = "STALL_TURN"
-                            continue
-                    else:
-                        stall_start_time = 0
-
-                    # Update stall vars
-                    last_check_left = left_pulses
-                    last_check_right = right_pulses
-                    next_stall_check = time.ticks_add(
-                        current_time, STALL_CHECK_INTERVAL_MS
-                    )
-
-            elif autonomous_state == "START_AVOID":
-                # Initialize avoidance pivot
-                pivot_start_L = left_pulses
-                pivot_start_R = right_pulses
-                progress_integral = progress_last_error = 0
-                balance_integral = balance_last_error = 0
-                autonomous_state = "AVOID"
-
-            elif autonomous_state == "AVOID":
-                # Execute avoidance turn
-                current_pulses = (left_pulses - pivot_start_L) + (
-                    right_pulses - pivot_start_R
-                )
-                if abs(current_pulses) >= TURN_PULSES:
-                    apply_brake()
-                    autonomous_state = "START_FWD"
-                else:
-                    pivot_motion("left", TURN_PULSES)
-
-            elif autonomous_state == "STALL_TURN":
-                # Execute stall recovery turn
-                current_pulses = (left_pulses - pivot_start_L) + (
-                    right_pulses - pivot_start_R
-                )
-                if abs(current_pulses) >= TURN_PULSES:
-                    apply_brake()
-                    autonomous_state = "START_FWD"
-                else:
-                    pivot_motion("left", TURN_PULSES)
-
-        # Priority 4: Safety - ensure stopped when idle
+    elif autonomous_state in ("AVOID", "STALL_TURN"):
+        turned = (left_pulses - pivot_start_left) + (right_pulses - pivot_start_right)
+        if abs(turned) >= TURN_PULSES:
+            apply_brake()
+            autonomous_state = "START_FWD"
         else:
-            if ena.duty_u16() > 0 or enb.duty_u16() > 0:
-                stop_all_movement()
+            pivot_motion("left", TURN_PULSES)
+    return False
 
-        # Update interface
+
+def control_step() -> None:
+    """Run one 20 ms iteration of the control loop.
+
+    Priority order: horn or obstacle block, then the active manual command,
+    then the autonomous state machine, then a safety stop when idle.
+    """
+    now = time.ticks_ms()
+
+    if emergency_active:
+        time.sleep_ms(20)
+        return
+
+    command = read_command()
+    if command and handle_command(command):
+        return
+
+    if horn_active or forward_blocked:
+        horn_buzz()
         update_led()
         time.sleep_ms(20)
+        return
+
+    if manual_command:
+        if drive_manual():
+            return
+    elif autonomous_mode:
+        if run_autonomous_step(now):
+            return
+    elif ena.duty_u16() > 0 or enb.duty_u16() > 0:
+        stop_all_movement()
+
+    update_led()
+    time.sleep_ms(20)
+
+
+def main_program_loop() -> None:
+    """Register the BLE UART service, then run the control loop forever."""
+    _ble_uart = BLEUART(bluetooth.BLE())  # keep a reference to the service
+    while True:
+        control_step()
 
 
 # ===========================================================
