@@ -1,0 +1,63 @@
+\chapter{Bill of Materials and Cost Analysis}
+\label{app:bom}
+
+This appendix provides a comprehensive list of all mechanical and electrical components used in the construction of the prototype. The prices are listed in Egyptian Pounds (EGP) and reflect the market rates at the time of purchase.
+
+\begingroup
+\small % Make font smaller for the table content
+% Column definitions: Comp | Photo | Qty | Price
+\sloppy % Allow more flexible word spacing
+\renewcommand{\arraystretch}{1.2} % Add vertical padding
+\begin{longtable}{|L{5.8cm}|p{2.3cm}|L{1.2cm}|L{2.5cm}|}
+\caption{Comprehensive Bill of Materials} \label{tab:bill_of_materials} \\
+\hline
+\textbf{Component} & \textbf{Photo} & \textbf{Qty.} & \textbf{Price/Unit (EGP)} \\ \hline
+\endfirsthead
+
+\multicolumn{4}{c}%
+{{\tablename\ \thetable\ -- \textit{Continued from previous page}}} \\
+\hline
+\textbf{Component} & \textbf{Photo} & \textbf{Qty.} & \textbf{Price/Unit (EGP)} \\ \hline
+\endhead
+
+\hline \multicolumn{4}{r}{\textit{Continued on next page}} \\
+\endfoot
+
+% --- Footer with Totals ---
+\hline
+\multicolumn{3}{|r|}{\cellcolor{lightgray}\textbf{Subtotal (Purchased Components):}} & \multicolumn{1}{p{2.5cm}|}{\cellcolor{lightgray}\textbf{2950.00}} \\ \hline
+\multicolumn{3}{|r|}{\cellcolor{lightgray}\textbf{Subtotal (Owned/Estimated*):}} & \multicolumn{1}{p{2.5cm}|}{\cellcolor{lightgray}\textbf{1000.00}} \\ \hline
+\multicolumn{3}{|r|}{\cellcolor{lightgray}\textbf{Grand Total Estimated Cost:}} & \multicolumn{1}{p{2.5cm}|}{\cellcolor{lightgray}\textbf{3950.00}} \\ \hline
+
+\endlastfoot
+
+% --- START OF COMPONENTS LIST ---
+
+% Electrical Components
+\href{https://microohm-eg.com/product/raspberry-pi-pico-w-wireless-wh-with-soldered-headers/}{\textbf{\textcolor{darkblue}{Raspberry Pi Pico W (WH)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/pico_w.jpg} & 1 & 750.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/ro-motor-tt-mini-dc-gearbox-motors-pair-2-motors-with-back-shaft-9455}{\textbf{\textcolor{darkblue}{DC Motors (TT Mini Gearbox Pair)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/dc_motor_tt.jpg} & 2 & 50.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/kit-l298-red-l298-module-red-board-dual-h-bridge-motor-driver-using-l298n-7084}{\textbf{\textcolor{darkblue}{H-Bridge L298N Motor Driver}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/l298n_driver.jpg} & 1 & 80.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/kit-ultrasonic-hcsr04-ultrasonic-sensor-hc-sr04-5949}{\textbf{\textcolor{darkblue}{HC-SR04 Ultrasonic Sensor}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/hcsr04_sensor.jpg} & 1 & 40.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/battery-li-12v-4000mah-battery-pack-12v-4000mah-6728}{\textbf{\textcolor{darkblue}{Battery Pack 12V 4000mAh}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/battery_12v.jpg} & 1 & 1400.00 \\ \hline
+\href{https://www.psdevwiki.com/ps3/Delta_KSB1012HE}{\textbf{\textcolor{darkblue}{PS3 Fan (Already Owned)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/ps3_fan.jpg} & 1 & 1000.00* \\ \hline
+\href{https://www.ram-e-shop.com/shop/dc-dc-100-dc-dc-step-down-voltage-converter-adjustable-3a-lm2596s-4-38vdc-to-1-5-35vdc-sku-dc100-7257}{\textbf{\textcolor{darkblue}{DC-DC Step Down LM2596S}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/lm2596s_buck.jpg} & 1 & 50.00 \\ \hline
+\textbf{\textcolor{darkblue}{IR Photoelectric Encoder Sensor}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/encoder_sensor.jpg} & 2 & 25.00 \\ \hline
+\textbf{\textcolor{darkblue}{Rotary Encoder Disc}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/encoder_disc.jpg} & 2 & 5.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/pb-2-green-push-button-type-2-green-color-5614}{\textbf{\textcolor{darkblue}{Push Button (DS-316 Green)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/push_button_green.jpg} & 1 & 7.50 \\ \hline
+\href{https://www.ram-e-shop.com/shop/xd10-3-12vdc-green-xd10-3-dc12v-green-small-led-signal-indicator-light-10mm-9155}{\textbf{\textcolor{darkblue}{LED Indicator (XD10-3 Green)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/led_indicator.jpg} & 1 & 7.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/r-5-roseta-2pin-2-pin-pcb-screw-terminal-block-pitch-5mm-14-1mm-long-r-5-6323}{\textbf{\textcolor{darkblue}{2 Pin Screw Terminal}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/terminal_2pin.jpg} & 3 & 5.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/r-6-roseta-3pin-3-pin-pcb-screw-terminal-block-pitch-5mm-14-1mm-long-r-6-6322}{\textbf{\textcolor{darkblue}{3 Pin Screw Terminal}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/terminal_3pin.jpg} & 6 & 6.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/ph35-1x20-female-ph35-pin-header-female-1x20-straight-2-54mm-6529}{\textbf{\textcolor{darkblue}{Pin Header Female 1x20}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/pin_header_female.jpg} & 2 & 3.00 \\ \hline
+{\textbf{\textcolor{darkblue}{Resistors (2.2k$\Omega$, 4.7k$\Omega$)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/resistor_2k2.png} & 2 & $\sim$2.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/ph60-mf-20cm-ph60-20cm-male-to-female-40-jumper-wires-set-7066}{\textbf{\textcolor{darkblue}{Jumper Wires (Assorted)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/jumper_mf.jpg} & 3 set & 35.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/wire-speaker-2x1mm-speaker-wire-2-core-x-1mm-red-black-1-meter-8878}{\textbf{\textcolor{darkblue}{Speaker Wire (1m)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/speaker_wire.jpg} & 1 & 7.50 \\ \hline
+
+% Mechanical Components
+\href{https://www.maamoon.com/product-page/66mm-robot-smart-car-wheel-tyre}{\textbf{\textcolor{darkblue}{Robot Wheels (66mm)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/wheel_66mm.jpg} & 2 & 36.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/ro-wheel-caster-small-metal-caster-wheel-20-mm-robot-wheel-max-load-15kg-7010}{\textbf{\textcolor{darkblue}{Metal Caster Wheel}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/caster_wheel.jpg} & 1 & 30.00 \\ \hline
+\href{https://www.ram-e-shop.com/shop/spacer-screw-20mm-plastic-screw-shape-snap-in-rivet-pcb-spacer-20mm-5739}{\textbf{\textcolor{darkblue}{PCB Spacers (20mm)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/pcb_spacer.jpg} & 8 & 0.75 \\ \hline
+\href{https://www.ram-e-shop.com/shop/nail-3x05mm-bolt-m3x06-mm-100-screws-bag-6545}{\textbf{\textcolor{darkblue}{Bolts and Nuts (M3)}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/bolts_m3.jpg} & 4 bag & 30.00 \\ \hline
+\href{https://microohm-eg.com/product/6mm-electrical-waterproof-seal-heat-shrink-splice-wire-sleeve-yellow-1pcs/}{\textbf{\textcolor{darkblue}{Heat Shrink Sleeve}}} & \includegraphics[width=0.9\linewidth, keepaspectratio]{images/components/heat_shrink.jpg} & 2 & 10.00 \\ \hline
+
+\end{longtable}
+\endgroup

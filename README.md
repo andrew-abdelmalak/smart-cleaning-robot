@@ -32,7 +32,7 @@ comparable commercial platforms.
 ## Overview
 
 <p align="center">
-  <img src="docs/figures/assembled_robot.jpeg" width="480" alt="Assembled Smart Cleaning Robot"/>
+  <img src="docs/thesis/images/photos/robot_assembled_side.jpg" width="480" alt="Assembled Smart Cleaning Robot"/>
 </p>
 
 The Smart Cleaning Robot integrates three subsystems on a custom 3D-printed PLA chassis:
@@ -72,7 +72,7 @@ The Smart Cleaning Robot integrates three subsystems on a custom 3D-printed PLA 
 ## System Architecture
 
 <p align="center">
-  <img src="docs/figures/control_flowchart.png" width="560" alt="Autonomous Control Flowchart"/>
+  <img src="docs/thesis/images/screenshots/control_flowchart.png" width="560" alt="Autonomous Control Flowchart"/>
 </p>
 
 The firmware (`main.py`) runs entirely on MicroPython and is structured as:
@@ -106,13 +106,13 @@ BLE UART service (interrupt-driven)
 | Power | Li-ion battery pack | > 60 min runtime |
 
 <p align="center">
-  <img src="docs/figures/chassis_cad.jpeg" width="420" alt="SolidWorks CAD — Isometric View"/>
+  <img src="docs/thesis/images/cad/chassis_open_isometric.jpg" width="420" alt="SolidWorks CAD — Isometric View"/>
   &nbsp;&nbsp;
-  <img src="docs/figures/assembled_robot_bottom.jpeg" width="420" alt="Assembled Robot — Bottom View"/>
+  <img src="docs/thesis/images/photos/robot_bottom_photo.jpg" width="420" alt="Assembled Robot — Bottom View"/>
 </p>
 
 <p align="center">
-  <img src="docs/figures/assembled_robot_internal.jpeg" width="560" alt="Internal Wiring"/>
+  <img src="docs/thesis/images/photos/internal_wiring.jpg" width="560" alt="Internal Wiring"/>
 </p>
 
 ---
@@ -162,7 +162,7 @@ Connect to the device advertising as **`PicoRobot-XXXX`** using any BLE UART cli
 | `+` / `-` | Increase / decrease speed |
 
 <p align="center">
-  <img src="docs/figures/ble_controller.jpeg" width="340" alt="NRF Toolbox BLE Controller"/>
+  <img src="docs/thesis/images/screenshots/nrf_toolbox_ui.jpg" width="340" alt="NRF Toolbox BLE Controller"/>
 </p>
 
 ---
@@ -223,7 +223,7 @@ smart-cleaning-robot/
 ## Autonomous State Machine
 
 <p align="center">
-  <img src="docs/figures/state_machine.jpeg" width="520" alt="FSM Block Diagram"/>
+  <img src="docs/thesis/images/screenshots/software_flowchart.jpg" width="520" alt="FSM Block Diagram"/>
 </p>
 
 | State | Behaviour |
@@ -270,7 +270,7 @@ The drive loop uses **feed-forward + PID** correction to keep both wheels at equ
 
 ## Thesis
 
-The full bachelor thesis is available at [`docs/Thesis.pdf`](docs/Thesis.pdf).
+The full bachelor thesis is available at [`docs/thesis/thesis.pdf`](docs/thesis/thesis.pdf).
 
 > *Design and Implementation of a Smart Cleaning Robot* — Andrew Khalil Samuel Abdelmalak,
 > Faculty of Engineering & Materials Sciences, German University in Cairo, June 2025.

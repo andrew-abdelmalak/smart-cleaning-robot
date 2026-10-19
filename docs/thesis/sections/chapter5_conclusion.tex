@@ -1,0 +1,79 @@
+% --- NEW Chapter 5: Conclusion and Recommendations for Future Work ---
+\chapter{Conclusion and Recommendations for Future Work}
+\label{chap:conclusion_future_work_new}
+
+\section{Conclusion}
+\label{sec:conclusion_summary_new}
+This thesis has successfully detailed the design, implementation, and qualitative performance evaluation of a prototype Smart Cleaning Robot. The project was undertaken with the aim of developing a cost-effective automated cleaning solution, leveraging the Raspberry Pi Pico W microcontroller, readily available sensors, and custom 3D-printed components.
+Key achievements of this project include:
+\begin{itemize}
+    \item The development of a functional robot prototype capable of \hyperref[term:ble]{BLE}-based manual remote control, featuring an autonomous navigation system upgraded to a hardware-aware, hybrid feed-forward and \hyperref[term:pid]{PID} control strategy.
+    \item A comprehensive design process encompassing mechanical design using SolidWorks, electrical system design with a custom \hyperref[term:pcb]{PCB}, and an iterative embedded software development process in MicroPython that explored multiple control theories.
+    \item Successful integration of various hardware components, including the Raspberry Pi Pico W, \hyperref[term:hcsr04]{HC-SR04} ultrasonic sensor, \hyperref[term:l298n]{L298N} motor driver, wheel encoders, and a repurposed PS3 fan for the vacuum system.
+    \item The implementation of a robust physical prototype with a neatly assembled chassis and electronics, capable of demonstrating significantly improved, though not perfect, autonomous movement.
+    \item Functional verification showing excellent remote-control capabilities, a basic ability to collect light debris, and the successful operation of safety features like stall detection.
+\end{itemize}
+
+\subsection{Cost Analysis}
+\label{subsec:cost_analysis}
+A primary objective of this thesis was to demonstrate the feasibility of a cost-effective cleaning robot. Table~\ref{tab:cost_comparison} compares the prototype's total cost against representative commercial alternatives.
+
+\begin{table}[htbp]
+\centering
+\caption{Cost Comparison: Prototype vs. Commercial Robots.}
+\label{tab:cost_comparison}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Robot} & \textbf{Approx. Cost (USD)} & \textbf{Key Features} \\ \hline
+This Prototype & \$80 (3950 EGP) & BLE control, PID nav, vacuum \\ \hline
+Basic Robot Vacuums & \$100--200 & Random nav, basic vacuum \\ \hline
+Xiaomi X20 Plus & \$300--500 & LiDAR SLAM, auto-empty \\ \hline
+iRobot Roomba 980 & \$500--900 & vSLAM, smart features \\ \hline
+\end{tabular}
+\end{table}
+
+The prototype achieves its core functionality at approximately \textbf{60--90\% lower cost} than entry-level commercial robots. While it lacks advanced features like SLAM-based navigation, it provides a functional platform demonstrating that affordable home robotics is achievable with accessible components.
+Ultimately, this project effectively demonstrated the feasibility of creating a smart cleaning robot with a modest budget and accessible technology. The iterative design process, especially in refining the software control strategy, was crucial for overcoming hardware challenges and achieving a higher level of functionality. The resulting prototype serves as a valuable foundation for affordable home robotics, successfully balancing core functionality with cost-effectiveness and providing a clear pathway for the more sophisticated enhancements outlined in this chapter.
+
+\section{Limitations}
+\label{sec:limitations_conclusion_new}
+Despite the progress made, the current prototype and project have several limitations that should be acknowledged:
+\begin{itemize}
+    \item \textbf{Autonomous Navigation Precision}: While the implementation of wheel encoders and \hyperref[term:pid]{PID} control represents a major advancement, achieving perfect navigational precision remains a primary limitation. Inherent non-linearities in the low-cost DC gear motors result in small, cumulative errors. This issue is compounded by the fact that the wheel encoders were integrated after the initial chassis was fabricated, leading to mounting points that are not perfectly symmetrical and contributing to small, cumulative errors. The \hyperref[term:pid]{PID} system works to actively correct these errors, but it cannot eliminate them entirely.
+    \item \textbf{Lack of High-Level Path Planning}: The current system uses its enhanced precision to better execute its reactive coverage strategy (moving forward and turning at obstacles or after recovering from stalls). However, it lacks advanced mapping and localization capabilities, such as those enabled by \hyperref[term:slam]{SLAM} techniques. This absence restricts the robot to reactive strategies rather than enabling truly intelligent, map-based environmental coverage, such as the systematic Boustrophedon pattern discussed in Chapter 2.
+    \item \textbf{Vacuum System Effectiveness}:
+        \begin{itemize}
+            \item \textit{No Check Valve:} The absence of a check valve in the Debris Collection Chamber can cause collected debris to spill out when the fan is turned off or the robot is jostled.
+            \item \textit{No Brushes:} The lack of mechanical brushes (roller or side), due to the local unavailability of suitable off-the-shelf components, significantly reduces the robot's ability to dislodge dirt from carpets or effectively clean edges and corners.
+        \end{itemize}
+    \item \textbf{Basic Power Management}: The current system uses a battery and buck converter but lacks advanced power management features such as battery level monitoring, low-battery warnings, or automatic return-to-charge functionality.
+\end{itemize}
+\section{Lessons Learned}
+\label{sec:lessons_learned}
+The development of this prototype provided valuable engineering insights beyond the technical outcomes:
+\begin{itemize}
+    \item \textbf{Hardware-Software Interaction}: The brownout issue highlighted that software algorithms cannot compensate for hardware limitations. Understanding the electrical constraints of the system is essential before designing control strategies.
+    \item \textbf{Iterative Design Value}: The evolution from open-loop to PID to hybrid control demonstrated the importance of iterative refinement. Each failure mode informed subsequent design decisions.
+    \item \textbf{Component Sourcing Challenges}: Local unavailability of certain components (brushes, specific sensors) required creative alternatives. Future projects should include sourcing contingencies.
+    \item \textbf{Early Encoder Integration}: Adding wheel encoders post-fabrication led to asymmetric mounting. Integrating precision sensors from the initial design phase would improve performance.
+    \item \textbf{Documentation Throughout}: Maintaining detailed notes during debugging accelerated problem diagnosis and solution development.
+\end{itemize}
+
+\section{Recommendations for Future Work}
+\label{sec:future_work_new}
+The current prototype serves as a strong foundation for numerous potential enhancements and future research directions, directly addressing the identified limitations:
+\begin{enumerate}
+    \item \textbf{Improved Navigation and Sensing:}
+        \begin{itemize}
+            \item \textbf{Upgrade Drive Motors (Stepper or High-Torque DC):} To overcome the inherent precision limitations of the current DC motors, future work should investigate replacing them with alternatives like stepper motors. Steppers offer open-loop control with a high degree of accuracy, which could eliminate path deviation issues. Furthermore, selecting motors with higher torque—whether they are steppers or simply more robust DC gear motors—is crucial. This would improve performance on thicker carpets and enhance the robot's capability to overcome small obstacles.
+            \item \textbf{Refined Path Planning Logic}: The successful integration of wheel encoders provides reliable odometry, paving the way for more intelligent navigation. Future work could leverage this improved positional awareness to implement more systematic algorithms, such as a true wall-following routine for thorough edge and corner cleaning, which would be a logical next step beyond the current obstacle-avoidance pattern.
+            \item \textbf{Explore \hyperref[term:slam]{SLAM}}: As a more advanced step, consider upgrading the processing capabilities (e.g., to a Raspberry Pi 4 with \hyperref[term:ros]{ROS}) to integrate a \textbf{\hyperref[term:lidar]{LiDAR}} sensor for 360-degree environmental mapping. This would allow the robot to build a precise 2D map and enable truly intelligent navigation, moving beyond simple obstacle avoidance to strategic, map-based cleaning, which would enable the implementation of efficient coverage algorithms like the Boustrophedon pattern~\cite{DurrantWhyte2006SLAM}.
+        \end{itemize}
+    \item \textbf{Enhanced Cleaning Mechanism:}
+        \begin{itemize}
+            \item \textbf{Redesign Intake and Debris Chamber}: Design and incorporate a one-way check valve into the Debris Collection Chamber to prevent spillage.
+            \item \textbf{Add Mechanical Brushes}: Integrate a motorized roller brush to agitate dirt from carpets and hard floors, and side brushes to sweep debris from edges and corners into the vacuum's path.
+        \end{itemize}
+    \item \textbf{Comprehensive Power System Management:} Future work should integrate a more holistic power management system. This includes implementing battery voltage monitoring via an ADC pin on the Pico W to provide low-battery warnings or trigger a safe shutdown. Furthermore, the experience with motor stalls under high \hyperref[term:pid]{PID} load highlighted the need for real-time voltage sag detection. An upgraded system could monitor for these sags and potentially use a more powerful battery pack or motor drivers with higher current capacity to reliably support aggressive, high-torque maneuvers.
+\end{enumerate}
+By addressing these areas, the smart cleaning robot can evolve from the current functional prototype into a more autonomous, efficient, and practical cleaning assistant for household environments.
