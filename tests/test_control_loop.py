@@ -121,6 +121,18 @@ def test_ble_disconnect_restarts_advertising(robot):
     assert ble.advertise_calls == 2
 
 
+def test_ble_disconnect_discards_an_unread_command(robot):
+    # A command that arrives just before a disconnect must not run after
+    # the next connection.
+    ble = FakeBLE()
+    robot.BLEUART(ble)
+    ble.handler(IRQ_CENTRAL_CONNECT, (7, 0, b""))
+    ble.rx = b"FORWARD"
+    ble.handler(IRQ_GATTS_WRITE, (7, 2))
+    ble.handler(IRQ_CENTRAL_DISCONNECT, (7, 0, b""))
+    assert robot.last_ble_command == ""
+
+
 def test_ble_write_with_invalid_utf8_is_ignored(robot):
     ble = FakeBLE()
     robot.BLEUART(ble)

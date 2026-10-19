@@ -598,6 +598,7 @@ class BLEUART:
                 self._connections.discard(conn_handle)
             if not self._connections:
                 ble_connected = False
+                last_ble_command = ""  # never run a command after reconnect
                 emergency_stop()
             # Advertising stops on connect; restart it so a phone can reconnect.
             self._advertise()
