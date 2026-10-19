@@ -55,3 +55,9 @@ boot_out.txt
 *.tar.bz2
 *.rar
 *.7z
+
+# ========================
+# Tool caches
+# ========================
+.pytest_cache/
+.ruff_cache/
