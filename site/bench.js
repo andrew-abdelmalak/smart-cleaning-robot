@@ -8,8 +8,8 @@
 (() => {
   "use strict";
 
-  const MICROPYTHON =
-    "https://cdn.jsdelivr.net/npm/@micropython/micropython-webassembly-pyscript@1.29.0-6/micropython.mjs";
+  // Served by the site itself; scripts/vendor.json pins its version and hash.
+  const MICROPYTHON = "./vendor/micropython/micropython.mjs";
   const MOVES = ["FORWARD", "BACKWARD", "LEFT", "RIGHT"];
   const STOP_CM = 15; // OBSTACLE_THRESHOLD_CM in the firmware
 
@@ -19,7 +19,7 @@
   const ROBOT_R = 0.175;
   const WHEEL_CIRCUMFERENCE = Math.PI * 0.066;
   const TRACK = 0.26;
-  const FLOOR_LOAD = 0.35;
+  const FLOOR_LOAD = 0.27;
   const NOZZLE_R = 0.1;
 
   // Room, 4.2 m by 2.36 m, with simple furniture.
@@ -69,6 +69,7 @@
   let dustTotal = 1;
   let trail; // offscreen canvas: the floor the nozzle has passed over
   let trailPoints = [];
+  let trailCells = new Set();
   let distanceCm = 999;
 
   // ---------------------------------------------------------------
@@ -162,6 +163,7 @@
     }
     dustTotal = dust.length;
     trailPoints = [];
+    trailCells = new Set();
     paintTrail();
   }
 
@@ -192,8 +194,11 @@
     }
     if (s.fan) {
       dust = dust.filter((p) => (p.x - robot.x) ** 2 + (p.y - robot.y) ** 2 > NOZZLE_R ** 2);
-      const lastPoint = trailPoints[trailPoints.length - 1];
-      if (!lastPoint || Math.hypot(lastPoint.x - robot.x, lastPoint.y - robot.y) > 0.015) {
+      // One stamp per 3 cm cell: the list stays bounded by the room's area
+      // however long the robot cleans, and the 13 cm stamps hide the grid.
+      const cell = `${Math.round(robot.x / 0.03)},${Math.round(robot.y / 0.03)}`;
+      if (!trailCells.has(cell)) {
+        trailCells.add(cell);
         trailPoints.push({ x: robot.x, y: robot.y });
         stampTrail(robot.x, robot.y);
       }
@@ -300,7 +305,9 @@
       }
       wake();
     } catch (err) {
-      ui.loading.textContent = "The firmware could not start in this browser. The clips show the real robot.";
+      const message = "The firmware could not start in this browser. The clips show the real robot.";
+      ui.loading.textContent = message;
+      ui.status.textContent = message; // the status line is announced; the overlay is not
       console.error(err);
     }
   }
@@ -335,7 +342,8 @@
   const ARROWS = { ArrowUp: "FORWARD", ArrowDown: "BACKWARD", ArrowLeft: "LEFT", ArrowRight: "RIGHT" };
   $("remote").addEventListener("keydown", (e) => {
     const cmd = ARROWS[e.key];
-    if (!cmd || e.altKey || e.ctrlKey || e.metaKey) return;
+    // A held key repeats, and a repeated drive command means brake.
+    if (!cmd || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     send(cmd);
   });
@@ -348,11 +356,14 @@
   });
 
   ui.reset.addEventListener("click", () => {
+    prev = null;
+    pendingNote = null;
     loadBench();
     logLines.length = 0;
     log("Room reset and firmware restarted", "event");
     updateUi();
     draw();
+    wake(); // restarts the loop if an error stopped it
   });
 
   ui.link.addEventListener("click", () => {
@@ -593,7 +604,8 @@
 
   function updateUi() {
     if (!s) return;
-    if (pendingNote) {
+    // Explain a command only after the firmware has read it.
+    if (pendingNote && !s.pending) {
       pendingNote();
       pendingNote = null;
     }
@@ -623,8 +635,11 @@
       key.setAttribute("aria-disabled", String(ignored));
       let pressed = s.manual === cmd;
       if (cmd === "CLEAN") {
-        pressed = s.autonomous;
-        key.querySelector(".key-label").textContent = pressed ? "Stop cleaning" : "Start cleaning";
+        // The label carries the state, so a screen reader hears it once,
+        // not as "Stop cleaning, pressed".
+        key.querySelector(".key-label").textContent = s.autonomous ? "Stop cleaning" : "Start cleaning";
+        key.classList.toggle("is-on", s.autonomous);
+        continue;
       } else if (cmd === "HORN") {
         pressed = s.horn;
       } else if (cmd === "FAN") {
@@ -642,26 +657,37 @@
   let raf = 0;
   let visible = false;
   let last = 0;
+  let carry = 0; // fractions of a millisecond, so the pace is the same at any refresh rate
   let frames = 0;
 
   function frame(t) {
     if (!running) return;
-    const ms = Math.min(Math.max(t - last, 0), 100);
-    last = t;
-    if (bench && ms >= 1) {
-      distanceCm = measureDistance();
-      bench.set_distance(distanceCm >= 999 ? null : distanceCm);
-      const stuck = pushingAgainstFurniture();
-      bench.hold_wheel(0, stuck);
-      bench.hold_wheel(1, stuck);
-      bench.step(Math.round(ms));
-      read();
-      moveRobot();
-      captionEvents();
+    try {
+      carry += Math.min(Math.max(t - last, 0), 100);
+      last = t;
+      const ms = Math.floor(carry);
+      carry -= ms;
+      if (bench && ms >= 1) {
+        distanceCm = measureDistance();
+        bench.set_distance(distanceCm >= 999 ? null : distanceCm);
+        const stuck = pushingAgainstFurniture();
+        bench.hold_wheel(0, stuck);
+        bench.hold_wheel(1, stuck);
+        bench.step(ms);
+        read();
+        moveRobot();
+        captionEvents();
+      }
+      draw();
+      frames += 1;
+      if (frames % 4 === 0 || pendingNote) updateUi();
+    } catch (err) {
+      // Stop and say so rather than freeze silently; Reset room starts it again.
+      running = false;
+      ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
+      console.error(err);
+      return;
     }
-    draw();
-    frames += 1;
-    if (frames % 4 === 0 || pendingNote) updateUi();
     raf = requestAnimationFrame(frame);
   }
 
@@ -669,6 +695,7 @@
     if (running || !visible || document.hidden) return;
     running = true;
     last = performance.now();
+    audio.ctx?.resume();
     raf = requestAnimationFrame(frame);
   }
 
@@ -676,13 +703,16 @@
     running = false;
     cancelAnimationFrame(raf); // a pending frame would start a second loop
     audio.set(0);
+    audio.ctx?.suspend();
   }
 
-  new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
+  // Watch the whole remote, not just the room: on a phone the keys sit below
+  // the room, and the firmware must keep running while they are on screen.
+  new IntersectionObserver((entries) => {
+    visible = entries[entries.length - 1].isIntersecting;
     if (visible) wake();
     else pause();
-  }).observe(canvas);
+  }).observe($("remote"));
   document.addEventListener("visibilitychange", () => (document.hidden ? pause() : wake()));
   new ResizeObserver(resize).observe(canvas);
 

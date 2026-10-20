@@ -1,12 +1,12 @@
-# Weekly, grouped dependency updates with a cooldown, so a new release has
-# a week to be pulled or fixed before a pull request proposes it. Security
+# Monthly, grouped dependency updates with a cooldown, so a new release has
+# time to be pulled or fixed before a pull request proposes it. Security
 # updates are not delayed by the cooldown.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       actions:
         patterns: ["*"]
@@ -17,7 +17,7 @@ updates:
   - package-ecosystem: uv
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]

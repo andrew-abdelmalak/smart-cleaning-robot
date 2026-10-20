@@ -1,0 +1,30 @@
+{
+  "comment": "Third-party browser files the site serves itself. Each hash was checked against the file inside the npm package tarball, whose own integrity matched the npm registry. To update: change the version in the URL, run scripts/fetch_vendor.py, and replace the hash only after checking the new file the same way.",
+  "files": [
+    {
+      "path": "micropython/micropython.mjs",
+      "url": "https://cdn.jsdelivr.net/npm/@micropython/micropython-webassembly-pyscript@1.29.0-6/micropython.mjs",
+      "sha256": "26cc7a99064a16518ab9a695e848efb248bfce504aee56ae73b2af35f3dcbf8b"
+    },
+    {
+      "path": "micropython/micropython.wasm",
+      "url": "https://cdn.jsdelivr.net/npm/@micropython/micropython-webassembly-pyscript@1.29.0-6/micropython.wasm",
+      "sha256": "d5913c9327072e71d3e7a2e9384ea326f7d784bcc2f50a01b602c52bd2bdcafd"
+    },
+    {
+      "path": "transformers/transformers.min.js",
+      "url": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js",
+      "sha256": "1475fd440e9932ab206682ee42cb18f6097403e9ee77ea62084c592d0f83597d"
+    },
+    {
+      "path": "ort/ort-wasm-simd-threaded.asyncify.mjs",
+      "url": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/ort-wasm-simd-threaded.asyncify.mjs",
+      "sha256": "0966b6105cd936744498aa60df7a22cbd47af3374dbc64a9ab561c08a71e3611"
+    },
+    {
+      "path": "ort/ort-wasm-simd-threaded.asyncify.wasm",
+      "url": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/ort-wasm-simd-threaded.asyncify.wasm",
+      "sha256": "49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082"
+    }
+  ]
+}

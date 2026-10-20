@@ -8,6 +8,8 @@ and stops when the phone disconnects.
 
 import importlib.util
 import json
+import shutil
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -24,15 +26,17 @@ def stand() -> Iterator[ModuleType]:
     """A freshly loaded bench; the real modules come back afterwards."""
     saved = {name: sys.modules.get(name) for name in FAKED}
     sys.modules.pop("main", None)
-    spec = importlib.util.spec_from_file_location("bench", BENCH_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    yield module
-    for name, original in saved.items():
-        if original is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = original
+    try:
+        spec = importlib.util.spec_from_file_location("bench", BENCH_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        yield module
+    finally:
+        for name, original in saved.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 def start_cleaning(stand: ModuleType) -> None:
@@ -121,3 +125,57 @@ def test_state_is_json(stand: ModuleType) -> None:
 
     assert state["name"] == "PicoRobot-3C33"
     assert state["connected"] is True
+    # Every field site/bench.js reads.
+    assert {
+        "name", "connected", "pending", "state", "manual", "autonomous",
+        "forward", "speed", "blocked", "horn", "duty", "fullStop", "fan",
+        "led", "ledPattern", "pulses", "turns",
+    } <= state.keys()  # fmt: skip
+
+
+def test_obstacle_threshold_is_below_15_cm(stand: ModuleType) -> None:
+    start_cleaning(stand)
+    stand.bench.set_distance(15)
+    stand.bench.step(200)
+    assert stand.fw.autonomous_state == "FWD"
+
+    stand.bench.set_distance(14)
+    stand.bench.step(200)
+    assert stand.fw.autonomous_state == "AVOID"
+
+
+def test_wheel_speed_does_not_depend_on_sonar_time(stand: ModuleType) -> None:
+    # The wheels keep turning while the firmware waits for the echo, so a
+    # far wall (long echo) or none (30 ms timeout) must not slow the robot.
+    speeds = []
+    for cm in (40, None):
+        stand.bench.set_distance(cm)
+        if not stand.fw.autonomous_mode:
+            start_cleaning(stand)
+        stand.bench.step(1000)
+        before = stand.bench.turns[0]
+        stand.bench.step(1000)
+        speeds.append(stand.bench.turns[0] - before)
+    assert speeds[1] == pytest.approx(speeds[0], rel=0.05)
+
+
+def test_wheel_model_inverts_the_firmware_feed_forward(stand: ModuleType) -> None:
+    # bench.py copies kS and kV from ff_pwm; driving at the firmware's duty
+    # for a speed must give that speed back, within one duty step (1 / kV).
+    fw = stand.fw
+    for pps in (20, 50, 75):
+        fw.set_motor_pwm(
+            fw.ff_pwm(pps, "L"), fw.ff_pwm(pps * fw.RIGHT_TRIM, "R"), "forward"
+        )
+        assert stand.bench._target_pps(0) == pytest.approx(pps, abs=1.6)
+        assert stand.bench._target_pps(1) == pytest.approx(pps, abs=1.7 / fw.RIGHT_TRIM)
+
+
+def test_bench_compiles_for_micropython(tmp_path: Path) -> None:
+    # The browser runs bench.py on MicroPython, not CPython.
+    mpy_cross = shutil.which("mpy-cross")
+    if mpy_cross is None:
+        pytest.skip("mpy-cross is not installed")
+    out = tmp_path / "bench.mpy"
+    subprocess.run([mpy_cross, "-o", str(out), str(BENCH_PATH)], check=True)
+    assert out.stat().st_size > 0
