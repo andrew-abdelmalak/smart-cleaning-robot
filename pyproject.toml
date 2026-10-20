@@ -25,8 +25,9 @@ search = [
 
 [tool.uv]
 package = false
-# Resolve only releases at least two weeks old when the lock was made.
-exclude-newer = "2026-10-05T00:00:00Z"
+# Resolve only releases at least two weeks old. Dependabot waits as long
+# (.github/dependabot.yml), so its uv updates stay inside this window.
+exclude-newer = "14 days"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
