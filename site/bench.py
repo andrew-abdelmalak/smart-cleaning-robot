@@ -216,6 +216,7 @@ class Bench:
         self.held = [False, False]
         self.load = 1.0  # floor speed as a fraction of free-wheel speed
         self.target_us = clock.us
+        self.motors_us = clock.us  # the clock time the wheels were last moved to
         self.button_release_us = None
         clock.on_sleep = self.run_motors
         self.connect()
@@ -261,13 +262,21 @@ class Bench:
         return max(0.0, (duty - ks) / kv / trim)
 
     def run_motors(self, ms: int) -> None:
+        """Move the wheels over all clock time since the last call.
+
+        Called on every sleep_ms. The wheels also turn while the firmware
+        busy-waits for the sonar echo, so the time step is the clock's,
+        not the sleep's ms.
+        """
         if self.button_release_us is not None and clock.us >= self.button_release_us:
             fw.button.value(1)
             self.button_release_us = None
         self.forward = [fw.in3.value() == 1, fw.in1.value() == 1]
         pins = (fw.left_enc, fw.right_enc)
-        steps = max(1, ms // PHYSICS_STEP_MS)
-        dt = ms / steps
+        elapsed = (clock.us - self.motors_us) / 1000
+        self.motors_us = clock.us
+        steps = max(1, int(elapsed // PHYSICS_STEP_MS))
+        dt = elapsed / steps
         for _ in range(steps):
             for i in (0, 1):
                 if self.held[i]:
@@ -303,6 +312,8 @@ class Bench:
                 "t": clock.us // 1000,
                 "name": fw._ADVERTISING_NAME,
                 "connected": fw.ble_connected,
+                # A command written but not yet read by the control loop.
+                "pending": bool(fw.last_ble_command),
                 "autonomous": fw.autonomous_mode,
                 "state": fw.autonomous_state,
                 "manual": fw.manual_command or "",

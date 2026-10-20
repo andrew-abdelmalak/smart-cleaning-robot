@@ -19,7 +19,7 @@
   const ROBOT_R = 0.175;
   const WHEEL_CIRCUMFERENCE = Math.PI * 0.066;
   const TRACK = 0.26;
-  const FLOOR_LOAD = 0.35;
+  const FLOOR_LOAD = 0.27;
   const NOZZLE_R = 0.1;
 
   // Room, 4.2 m by 2.36 m, with simple furniture.
@@ -300,7 +300,9 @@
       }
       wake();
     } catch (err) {
-      ui.loading.textContent = "The firmware could not start in this browser. The clips show the real robot.";
+      const message = "The firmware could not start in this browser. The clips show the real robot.";
+      ui.loading.textContent = message;
+      ui.status.textContent = message; // the status line is announced; the overlay is not
       console.error(err);
     }
   }
@@ -335,7 +337,8 @@
   const ARROWS = { ArrowUp: "FORWARD", ArrowDown: "BACKWARD", ArrowLeft: "LEFT", ArrowRight: "RIGHT" };
   $("remote").addEventListener("keydown", (e) => {
     const cmd = ARROWS[e.key];
-    if (!cmd || e.altKey || e.ctrlKey || e.metaKey) return;
+    // A held key repeats, and a repeated drive command means brake.
+    if (!cmd || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     send(cmd);
   });
@@ -348,11 +351,14 @@
   });
 
   ui.reset.addEventListener("click", () => {
+    prev = null;
+    pendingNote = null;
     loadBench();
     logLines.length = 0;
     log("Room reset and firmware restarted", "event");
     updateUi();
     draw();
+    wake(); // restarts the loop if an error stopped it
   });
 
   ui.link.addEventListener("click", () => {
@@ -593,7 +599,8 @@
 
   function updateUi() {
     if (!s) return;
-    if (pendingNote) {
+    // Explain a command only after the firmware has read it.
+    if (pendingNote && !s.pending) {
       pendingNote();
       pendingNote = null;
     }
@@ -642,26 +649,37 @@
   let raf = 0;
   let visible = false;
   let last = 0;
+  let carry = 0; // fractions of a millisecond, so the pace is the same at any refresh rate
   let frames = 0;
 
   function frame(t) {
     if (!running) return;
-    const ms = Math.min(Math.max(t - last, 0), 100);
-    last = t;
-    if (bench && ms >= 1) {
-      distanceCm = measureDistance();
-      bench.set_distance(distanceCm >= 999 ? null : distanceCm);
-      const stuck = pushingAgainstFurniture();
-      bench.hold_wheel(0, stuck);
-      bench.hold_wheel(1, stuck);
-      bench.step(Math.round(ms));
-      read();
-      moveRobot();
-      captionEvents();
+    try {
+      carry += Math.min(Math.max(t - last, 0), 100);
+      last = t;
+      const ms = Math.floor(carry);
+      carry -= ms;
+      if (bench && ms >= 1) {
+        distanceCm = measureDistance();
+        bench.set_distance(distanceCm >= 999 ? null : distanceCm);
+        const stuck = pushingAgainstFurniture();
+        bench.hold_wheel(0, stuck);
+        bench.hold_wheel(1, stuck);
+        bench.step(ms);
+        read();
+        moveRobot();
+        captionEvents();
+      }
+      draw();
+      frames += 1;
+      if (frames % 4 === 0 || pendingNote) updateUi();
+    } catch (err) {
+      // Stop and say so rather than freeze silently; Reset room starts it again.
+      running = false;
+      ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
+      console.error(err);
+      return;
     }
-    draw();
-    frames += 1;
-    if (frames % 4 === 0 || pendingNote) updateUi();
     raf = requestAnimationFrame(frame);
   }
 
@@ -669,6 +687,7 @@
     if (running || !visible || document.hidden) return;
     running = true;
     last = performance.now();
+    audio.ctx?.resume();
     raf = requestAnimationFrame(frame);
   }
 
@@ -676,13 +695,16 @@
     running = false;
     cancelAnimationFrame(raf); // a pending frame would start a second loop
     audio.set(0);
+    audio.ctx?.suspend();
   }
 
-  new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
+  // Watch the whole remote, not just the room: on a phone the keys sit below
+  // the room, and the firmware must keep running while they are on screen.
+  new IntersectionObserver((entries) => {
+    visible = entries[entries.length - 1].isIntersecting;
     if (visible) wake();
     else pause();
-  }).observe(canvas);
+  }).observe($("remote"));
   document.addEventListener("visibilitychange", () => (document.hidden ? pause() : wake()));
   new ResizeObserver(resize).observe(canvas);
 

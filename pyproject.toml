@@ -31,7 +31,7 @@ exclude-newer = "14 days"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["firmware"]
+pythonpath = ["firmware", "scripts"]
 
 [tool.ruff]
 src = ["firmware", "tests"]

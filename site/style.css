@@ -901,6 +901,8 @@ figcaption {
 
 .gains-wrap {
   margin-top: 40px;
+  /* At 320 px the five columns are a few pixels too wide; scroll the table, not the page. */
+  overflow-x: auto;
 }
 
 .gains {

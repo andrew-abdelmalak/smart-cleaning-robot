@@ -54,21 +54,38 @@ def page_text(page: int) -> list[str]:
         ["pdftotext", "-f", str(page), "-l", str(page), str(PDF), "-"],
         check=True,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     ).stdout
     lines = [line.strip() for line in out.splitlines() if line.strip()]
     # Drop the printed page number at the foot of the page.
     if lines and re.fullmatch(r"\d+|[ivx]+", lines[-1]):
         lines.pop()
-    # A word hyphenated across the page break comes out with the page number
-    # glued to its first half ("com47"); restore the hyphen so sections()
-    # joins it to the rest of the word on the next page.
+    # A word hyphenated across the page break comes out as the page's last
+    # line with the page number glued to its first half ("com47"); restore
+    # the hyphen so sections() joins it to the rest of the word.
     number = str(page - PAGE_OFFSET)
-    for k, line in enumerate(lines):
-        head = line.removesuffix(number)
-        if head != line and head[-1:].islower():
-            lines[k] = head + "-"
+    if lines:
+        head = lines[-1].removesuffix(number)
+        if head != lines[-1] and head[-1:].islower():
+            lines[-1] = head + "-"
     return lines
+
+
+def _section_key(number: str) -> tuple[int, ...]:
+    return tuple(0 if part == "A" else int(part) for part in number.split("."))
+
+
+def _add_section(found: list[dict], number: str, title: str) -> None:
+    """Start a section, failing loudly if the numbering goes backwards.
+
+    A misread table cell or cross-reference would otherwise become a bogus
+    section without any error.
+    """
+    last = found[-1]["section"]
+    same_chapter = last.split(".")[0] == number.split(".")[0]
+    if last and same_chapter and _section_key(number) <= _section_key(last):
+        raise ValueError(f"section {number} {title!r} follows {last}: misread?")
+    found.append({"section": number, "title": title, "lines": []})
 
 
 def sections() -> list[dict]:
@@ -92,7 +109,7 @@ def sections() -> list[dict]:
             if heading:
                 chapter = heading[1] or heading[2]
                 title = CHAPTER_TITLES[chapter]
-                found.append({"section": chapter, "title": title, "lines": []})
+                _add_section(found, chapter, title)
                 # Skip the title lines that follow, however they wrap.
                 i += 1
                 shown = ""
@@ -111,7 +128,7 @@ def sections() -> list[dict]:
                 )
                 if at is not None:
                     found[-1]["lines"] += [(page, s) for s in ahead[:at]]
-                    found.append({"section": line, "title": ahead[at], "lines": []})
+                    _add_section(found, line, ahead[at])
                     i += 2 + at
                     continue
             body = found[-1]["lines"]
@@ -138,7 +155,11 @@ def passages() -> list[dict]:
                     break
                 end += 1
             chunk = words[start:end]
-            if len(chunk) >= 12:
+            previous = out[-1] if out else None
+            if len(chunk) < 12 and previous and previous["title"] == sec["title"]:
+                # A short tail joins the passage before it rather than vanish.
+                previous["text"] += " " + " ".join(word for _, word in chunk)
+            elif chunk:
                 pdf_page = chunk[0][0]
                 page = "v" if pdf_page == ABSTRACT_PAGE else str(pdf_page - PAGE_OFFSET)
                 out.append(

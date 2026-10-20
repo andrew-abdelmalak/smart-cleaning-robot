@@ -26,7 +26,7 @@ jobs:
 
       - name: Build with latexmk
         working-directory: docs/thesis
-        run: latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+        run: latexmk -pdf -no-shell-escape -interaction=nonstopmode -halt-on-error main.tex
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

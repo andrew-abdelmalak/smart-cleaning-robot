@@ -1,20 +1,19 @@
 """Checks for site/thesis-index.json, the passage index behind "Ask the thesis".
 
-The shape checks always run. The retrieval check embeds real questions with the
-same model the site uses, so it needs the `search` dependency group and a
-one-time model download; it is skipped without them.
+The shape and parity checks always run. The retrieval check embeds real
+questions with the same model the site uses, so it needs the `search`
+dependency group and a one-time model download; it is skipped without them.
 """
 
 import json
-import sys
+import re
 from pathlib import Path
 
+import build_thesis_index as build
+import numpy as np
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-
-INDEX = json.loads((ROOT / "site/thesis-index.json").read_text(encoding="utf-8"))
 
 # Questions a visitor might ask, with the sections that answer them.
 QUESTIONS = {
@@ -42,30 +41,61 @@ QUESTIONS = {
 }
 
 
-def test_index_shape() -> None:
-    from build_thesis_index import load_vectors
+@pytest.fixture(scope="module")
+def index() -> dict:
+    return json.loads((ROOT / "site/thesis-index.json").read_text(encoding="utf-8"))
 
-    passages = INDEX["passages"]
-    vectors = load_vectors(INDEX)
+
+def test_index_shape(index: dict) -> None:
+    passages = index["passages"]
+    vectors = build.load_vectors(index)
+    assert (index["model"], index["revision"], index["dtype"]) == (
+        build.MODEL,
+        build.REVISION,
+        "q8",
+    )
     assert vectors.shape == (len(passages), 384)
-    assert all(1 <= p["pdfPage"] <= 69 for p in passages)
-    assert all(p["text"].strip() for p in passages)
+    # Unit vectors survive the 8-bit storage; a misaligned array would not.
+    assert np.allclose(np.linalg.norm(vectors, axis=1), 1, atol=0.03)
+    for p in passages:
+        assert p["text"].strip()
+        printed = (
+            "v"
+            if p["pdfPage"] == build.ABSTRACT_PAGE
+            else str(p["pdfPage"] - build.PAGE_OFFSET)
+        )
+        assert p["page"] == printed
     # Every section the questions expect exists in the index.
     sections = {p["section"] for p in passages}
     assert set().union(*QUESTIONS.values()) <= sections
 
 
-def test_questions_find_their_section_in_top_three() -> None:
+def test_browser_ranking_uses_the_same_constants() -> None:
+    # site/ask.js mirrors rank(); a change on one side only would make the
+    # page rank differently from what the retrieval test measures.
+    js = (ROOT / "site/ask.js").read_text(encoding="utf-8")
+    weight = re.search(r"KEYWORD_WEIGHT = ([\d.]+);", js)
+    assert weight and float(weight[1]) == build.KEYWORD_WEIGHT
+    stop = re.search(r'\(\s*"([^"]+)" \+\s*"([^"]+)"\s*\)\.split', js)
+    assert stop and set((stop[1] + stop[2]).split()) == build.STOPWORDS
+    for constant in ("1.2", "0.25", "0.75", "2.2"):
+        assert constant in js
+
+
+def test_questions_find_their_section_in_top_three(index: dict) -> None:
     pytest.importorskip("onnxruntime")
     pytest.importorskip("tokenizers")
-    from build_thesis_index import Embedder, load_vectors, rank
+    try:
+        embed = build.Embedder()
+    except OSError as err:  # offline and the model is not cached
+        pytest.skip(f"model unavailable: {err}")
 
-    passages = INDEX["passages"]
-    vectors = load_vectors(INDEX)
-    queries = Embedder()(list(QUESTIONS))
+    passages = index["passages"]
+    vectors = build.load_vectors(index)
+    queries = embed(list(QUESTIONS))
     misses = []
     for (question, expected), query in zip(QUESTIONS.items(), queries, strict=True):
-        top = rank(question, query, passages, vectors)[:3]
+        top = build.rank(question, query, passages, vectors)[:3]
         found = [passages[i]["section"] for i in top]
         if not expected & set(found):
             misses.append(f"{question} -> {found}, expected {sorted(expected)}")
@@ -75,10 +105,8 @@ def test_questions_find_their_section_in_top_three() -> None:
     assert hit_rate >= 0.75, "\n".join(misses)
 
 
-def test_keyword_ranking_finds_exact_terms() -> None:
+def test_keyword_ranking_finds_exact_terms(index: dict) -> None:
     # The page falls back to keywords alone while the model loads.
-    from build_thesis_index import load_vectors, rank
-
-    passages = INDEX["passages"]
-    top = rank("L298N motor driver", None, passages, load_vectors(INDEX))[:3]
-    assert any("L298N" in passages[i]["text"] for i in top)
+    passages = index["passages"]
+    top = build.rank("L298N motor driver", None, passages, build.load_vectors(index))
+    assert any("L298N" in passages[i]["text"] for i in top[:3])
