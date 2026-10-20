@@ -1,0 +1,26 @@
+# Weekly, grouped dependency updates with a cooldown, so a new release has
+# a week to be pulled or fixed before a pull request proposes it. Security
+# updates are not delayed by the cooldown.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7
+
+  # Host-side test and build tools (pyproject.toml and uv.lock).
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    # Match exclude-newer in pyproject.toml, or uv refuses the update.
+    cooldown:
+      default-days: 14
