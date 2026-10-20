@@ -227,6 +227,7 @@ h1 {
 }
 
 .clip figcaption {
+  text-wrap: pretty;
   color: var(--muted);
   font-size: 0.875rem;
   max-width: 28ch;
@@ -560,7 +561,7 @@ input[type="range"] {
 }
 
 .sim-note p {
-  max-width: 62ch;
+  max-width: 52ch;
   margin: 0;
   color: var(--muted);
   font-size: 0.875rem;
@@ -609,7 +610,6 @@ input[type="range"] {
 
   .stand-controls {
     grid-template-columns: minmax(0, 1fr);
-    order: 3;
   }
 
   /* Phone: the clip sits beside the three numbers. */
@@ -1037,7 +1037,7 @@ figcaption {
   opacity: 1;
 }
 
-@media (hover: none) {
+@media (hover: none) and (pointer: coarse) {
   .zoom::after {
     opacity: 1;
   }
