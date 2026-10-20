@@ -144,6 +144,12 @@ uv run mpy-cross -o main.mpy firmware/main.py
 
 CI runs the same steps on every push and pull request.
 
+The site serves its third-party browser code (MicroPython WebAssembly, transformers.js, and the ONNX runtime) itself, pinned by SHA-256 in `scripts/vendor.json`; Dependabot does not track these, so check them for updates by hand. To preview the site locally, fetch them into `site/vendor/` (ignored by git) and serve `site/`:
+
+```bash
+python3 scripts/fetch_vendor.py site/vendor
+```
+
 The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. To rebuild that index after the thesis changes, install poppler's `pdftotext` and run:
 
 ```bash
