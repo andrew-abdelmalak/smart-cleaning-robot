@@ -13,7 +13,11 @@ MicroPython firmware for a low-cost floor-cleaning robot built on a Raspberry Pi
 
 The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The parts cost 3,950 EGP in 2025, about 80 USD at the time.
 
-**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, on a simulated test stand, next to the real footage and the build story.
+**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, in a drawn room you can drive it around, next to the real footage and the build story.
+
+[![Watch the 34-second video: the robot, how it was built, and its firmware running in a browser](docs/media/brag-poster.jpg)](https://andrew-abdelmalak.github.io/smart-cleaning-robot/media/brag.mp4)
+
+*The project in 34 seconds. Music: “Happy Beats & Business Moves Vol. 10” by Sascha Ende ([ende.app](https://ende.app/en)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
 ## Results
 
@@ -144,9 +148,9 @@ CI runs the same steps on every push and pull request.
 firmware/main.py      MicroPython firmware (copy to the board as main.py)
 tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
-docs/media/           Demo clips from the thesis presentation
+docs/media/           Demo clips from the thesis presentation and the project video
 docs/thesis/          Thesis PDF and its LaTeX source
-site/                 Project site; runs the firmware in the browser on a simulated test stand
+site/                 Project site; runs the firmware in the browser in a drawn room
 ```
 
 ## Known limitations

@@ -22,17 +22,17 @@
   const FLOOR_LOAD = 0.35;
   const NOZZLE_R = 0.1;
 
-  // Room, 4.8 m by 2.7 m, with simple furniture.
-  const ROOM_W = 4.8;
-  const ROOM_H = 2.7;
+  // Room, 4.2 m by 2.36 m, with simple furniture.
+  const ROOM_W = 4.2;
+  const ROOM_H = 2.3625;
   const RECTS = [
-    { x: 0.35, y: 0, w: 1.9, h: 0.85, kind: "sofa" },
-    { x: 3.25, y: 0, w: 0.75, h: 0.72, kind: "chair" },
-    { x: 4.25, y: 1.0, w: 0.55, h: 1.2, kind: "cabinet" },
+    { x: 0.15, y: 0, w: 1.5, h: 0.74, kind: "sofa" },
+    { x: 2.85, y: 0, w: 0.66, h: 0.63, kind: "chair" },
+    { x: 3.72, y: 0.87, w: 0.48, h: 1.05, kind: "cabinet" },
   ];
   const CIRCLES = [
-    { x: 2.95, y: 1.75, r: 0.36, kind: "table" },
-    { x: 0.32, y: 2.38, r: 0.22, kind: "plant" },
+    { x: 2.58, y: 1.53, r: 0.32, kind: "table" },
+    { x: 0.28, y: 2.08, r: 0.19, kind: "plant" },
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -54,6 +54,8 @@
     sound: $("bench-sound"),
     lid: $("lid-button"),
     reset: $("room-reset"),
+    caption: $("room-caption"),
+    score: $("room-score"),
     keys: [...document.querySelectorAll(".key[data-cmd]")],
   };
   const controls = [ui.link, ui.lid, ui.reset, ...ui.keys];
@@ -64,6 +66,9 @@
   let s = null; // latest state from bench.state()
   let robot;
   let dust;
+  let dustTotal = 1;
+  let trail; // offscreen canvas: the floor the nozzle has passed over
+  let trailPoints = [];
   let distanceCm = 999;
 
   // ---------------------------------------------------------------
@@ -146,15 +151,18 @@
   }
 
   function resetRoom() {
-    robot = { x: 1.15, y: 1.85, th: 0, turns: [0, 0] };
+    robot = { x: 1.0, y: 1.6, th: 0, turns: [0, 0] };
     distanceCm = measureDistance();
     const rand = seededRandom(7);
     dust = [];
-    while (dust.length < 2400) {
+    while (dust.length < 2200) {
       const x = rand() * ROOM_W;
       const y = rand() * ROOM_H;
       if (!hitsFurniture(x, y, 0.02)) dust.push({ x, y, s: 0.6 + rand() * 0.9 });
     }
+    dustTotal = dust.length;
+    trailPoints = [];
+    paintTrail();
   }
 
   // ---------------------------------------------------------------
@@ -184,7 +192,52 @@
     }
     if (s.fan) {
       dust = dust.filter((p) => (p.x - robot.x) ** 2 + (p.y - robot.y) ** 2 > NOZZLE_R ** 2);
+      const lastPoint = trailPoints[trailPoints.length - 1];
+      if (!lastPoint || Math.hypot(lastPoint.x - robot.x, lastPoint.y - robot.y) > 0.015) {
+        trailPoints.push({ x: robot.x, y: robot.y });
+        stampTrail(robot.x, robot.y);
+      }
     }
+  }
+
+  // The vacuumed floor shows as a lighter swath, like stripes on a carpet.
+  function stampTrail(x, y) {
+    const t = trail.getContext("2d");
+    t.fillStyle = "#fcfcfd"; // opaque, so overlapping passes don't pile up
+    t.beginPath();
+    t.arc(x * scale, y * scale, NOZZLE_R * 1.3 * scale, 0, Math.PI * 2);
+    t.fill();
+  }
+
+  function paintTrail() {
+    if (!trail) trail = document.createElement("canvas");
+    trail.width = canvas.width;
+    trail.height = canvas.height;
+    for (const p of trailPoints) stampTrail(p.x, p.y);
+  }
+
+  // Short plain-language captions on the map for the moments that matter.
+  let captionTimer = 0;
+  function caption(text) {
+    ui.caption.textContent = text;
+    ui.caption.classList.add("is-on");
+    clearTimeout(captionTimer);
+    captionTimer = setTimeout(() => ui.caption.classList.remove("is-on"), 2600);
+  }
+
+  let prev = null;
+  function captionEvents() {
+    if (prev) {
+      const reversing = (x) => x.autonomous && !x.forward[0] && !x.forward[1] && x.speed[0] + x.speed[1] > 2;
+      if (s.state === "AVOID" && prev.state !== "AVOID") caption("Obstacle 15 cm ahead: turning left");
+      else if (reversing(s) && !reversing(prev) && s.state === "FWD") caption("Wheel stuck: backing out");
+      else if (s.blocked && !prev.blocked) caption("Too close to drive forward: honking");
+      else if (s.horn && !prev.horn && !s.blocked) caption("Honk!");
+      else if (s.autonomous && !prev.autonomous) caption("Cleaning on its own");
+      else if (!s.autonomous && prev.autonomous && s.connected) caption("Stopped");
+      else if (!s.connected && prev.connected) caption("Phone disconnected: robot stopped");
+    }
+    prev = s;
   }
 
   // ---------------------------------------------------------------
@@ -290,6 +343,7 @@
   ui.lid.addEventListener("click", () => {
     bench.press_button();
     log("Lid button pressed", "event");
+    caption("Lid button pressed");
     wake();
   });
 
@@ -352,6 +406,7 @@
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(w * (ROOM_H / ROOM_W) * dpr);
     scale = (w / ROOM_W) * dpr;
+    paintTrail();
     draw();
   }
 
@@ -360,6 +415,7 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#f5f5f5";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(trail, 0, 0);
 
     // Floor boards every 0.3 m.
     ctx.strokeStyle = "rgba(45, 49, 66, 0.07)";
@@ -553,6 +609,7 @@
     ui.pulses.textContent = `${s.pulses[0]} / ${s.pulses[1]}`;
     ui.led.textContent = s.ledPattern.replace("_", " ").toLowerCase();
     ui.fan.textContent = s.fan ? "on" : "off";
+    ui.score.textContent = `${Math.round((1 - dust.length / dustTotal) * 100)} %`;
     ui.link.textContent = s.connected ? "Disconnect" : "Connect";
     ui.link.classList.toggle("is-off", !s.connected);
 
@@ -600,6 +657,7 @@
       bench.step(Math.round(ms));
       read();
       moveRobot();
+      captionEvents();
     }
     draw();
     frames += 1;
