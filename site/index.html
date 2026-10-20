@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
   <link rel="stylesheet" href="style.css">
   <script src="bench.js" defer></script>
+  <script src="ask.js" type="module"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -268,6 +269,26 @@
         <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/docs/thesis">LaTeX source</a></li>
         <li><a href="https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f">Overleaf (read only)</a></li>
       </ul>
+
+      <div class="ask" aria-labelledby="ask-title">
+        <h3 id="ask-title">Ask the thesis</h3>
+        <p class="ask-note">Semantic search over the thesis, run in your browser. It finds the three passages closest in meaning to your question and links to their pages. It quotes the thesis and never writes an answer of its own.</p>
+        <form class="ask-form" id="ask-form" role="search">
+          <label for="ask-input">Your question</label>
+          <div class="ask-row">
+            <input id="ask-input" type="search" placeholder="How much did the robot cost?" autocomplete="off" enterkeyhint="search" maxlength="200" required>
+            <button type="submit">Search</button>
+          </div>
+        </form>
+        <div class="ask-try">
+          <span>Try</span>
+          <button type="button" data-ask>Why did pure PID control fail?</button>
+          <button type="button" data-ask>What would you improve?</button>
+          <button type="button" data-ask>Which motor driver does it use?</button>
+        </div>
+        <p class="ask-status" id="ask-status" role="status"></p>
+        <ol class="ask-results" id="ask-results"></ol>
+      </div>
     </section>
   </main>
 
