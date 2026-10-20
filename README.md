@@ -13,6 +13,8 @@ MicroPython firmware for a low-cost floor-cleaning robot built on a Raspberry Pi
 
 The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The parts cost 3,950 EGP in 2025, about 80 USD at the time.
 
+**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, on a simulated test stand, next to the real footage and the build story.
+
 ## Results
 
 From the prototype tests in the [thesis](docs/thesis/thesis.pdf) (Table 4.2 and section 5.1.1):
@@ -144,6 +146,7 @@ tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
 docs/media/           Demo clips from the thesis presentation
 docs/thesis/          Thesis PDF and its LaTeX source
+site/                 Project site; runs the firmware in the browser on a simulated test stand
 ```
 
 ## Known limitations
