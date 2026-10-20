@@ -8,10 +8,12 @@ MicroPython firmware for a low-cost floor-cleaning robot built on a Raspberry Pi
 <p align="center">
   <img src="docs/media/robot-driving.webp" width="320" alt="The round black robot driving across a wooden floor toward a doormat">
   &nbsp;
-  <img src="docs/thesis/images/photos/robot_assembled_side.jpg" width="320" alt="Side view of the assembled robot: a 35 cm round black chassis with a filter on top">
+  <img src="docs/thesis/images/photos/robot_assembled_side.jpg" width="320" alt="Top view of the assembled robot: a 35 cm round black chassis with a metal filter, a green button, and a green status light">
 </p>
 
-The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The whole build cost about 80 USD (3,950 EGP).
+The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The parts cost 3,950 EGP in 2025, about 80 USD at the time.
+
+**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, on a simulated test stand, next to the real footage and the build story.
 
 ## Results
 
@@ -25,7 +27,7 @@ From the prototype tests in the [thesis](docs/thesis/thesis.pdf) (Table 4.2 and 
 | Stall recovery | Detected a stuck wheel and recovered in simulated stuck conditions |
 | Cleaning | Collected light debris (paper, dust) from hard floors |
 | System power | About 26 W at 12 V (estimate from component ratings) |
-| Build cost | About 80 USD, against 100 to 900 USD for the commercial robots compared |
+| Build cost | 3,950 EGP in parts (about 80 USD at the June 2025 exchange rate), against 100 to 900 USD for the commercial robots compared |
 | Size and weight | 35 cm diameter, 17 cm high, 2.65 kg |
 
 ## How it works
@@ -144,6 +146,7 @@ tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
 docs/media/           Demo clips from the thesis presentation
 docs/thesis/          Thesis PDF and its LaTeX source
+site/                 Project site; runs the firmware in the browser on a simulated test stand
 ```
 
 ## Known limitations

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Cleaning Robot · Andrew Abdelmalak</title>
+  <meta name="description" content="A floor-cleaning robot designed and built end to end for a bachelor thesis: 3D-printed body, custom circuit board, and MicroPython firmware. Its real firmware runs in your browser.">
+  <meta name="theme-color" content="#f5f5f5">
+  <meta property="og:title" content="Smart Cleaning Robot">
+  <meta property="og:description" content="A floor-cleaning robot I designed and built for 3,950 EGP in parts (about 80 USD in 2025). Its real firmware runs in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://andrew-abdelmalak.github.io/smart-cleaning-robot/">
+  <meta property="og:image" content="https://andrew-abdelmalak.github.io/smart-cleaning-robot/img/og.jpg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Smart Cleaning Robot: MicroPython robot with BLE control and feed-forward plus PID motion, beside a photo of the round black robot.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://andrew-abdelmalak.github.io/smart-cleaning-robot/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%232d3142'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23b9bec8'/%3E%3Ccircle cx='24' cy='16' r='2' fill='%2346e07a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script src="bench.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <svg width="0" height="0" class="sprite" aria-hidden="true">
+    <symbol id="i-up" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="M10.5 18.5 16 13l5.5 5.5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="M10.5 13.5 16 19l5.5-5.5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="M18.5 10.5 13 16l5.5 5.5"/></symbol>
+    <symbol id="i-right" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="M13.5 10.5 19 16l-5.5 5.5"/></symbol>
+    <symbol id="i-clean" viewBox="0 0 32 32"><path d="M6 13v-1.5A3.5 3.5 0 0 1 9.5 8H25"/><path d="m21 4 4 4-4 4"/><path d="M26 19v1.5a3.5 3.5 0 0 1-3.5 3.5H7"/><path d="m11 28-4-4 4-4"/></symbol>
+    <symbol id="i-horn" viewBox="0 0 32 32"><path d="M5 12.5h5l7-5.5v18l-7-5.5H5z"/><path d="M21.5 11.5a6 6 0 0 1 0 9"/><path d="M24.5 8a11 11 0 0 1 0 16"/></symbol>
+    <symbol id="i-fan" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="2.2"/><path d="M16 13.8c-1-3.6.5-6.6 3.8-6.3 2.2.2 2.3 3.2-.3 5.1"/><path d="M18 17.3c3.6.9 5.4 3.7 3.5 6.4-1.3 1.8-4 .4-4.3-2.8"/><path d="M14 17.1c-2.6 2.7-6 2.9-7.4-.1-.9-2 1.7-3.6 4.6-2.4"/></symbol>
+    <symbol id="i-out" viewBox="0 0 16 16"><path d="M6 3.5H3.5v9h9V10"/><path d="M9 3h4v4M13 3 7.5 8.5"/></symbol>
+  </svg>
+
+  <header class="bar">
+    <a class="bar-name" href="https://github.com/andrew-abdelmalak">Andrew Abdelmalak</a>
+    <nav aria-label="Sections">
+      <a href="#build">Build</a>
+      <a href="#results">Results</a>
+      <a href="#engineers">For engineers</a>
+      <a href="#thesis">Thesis</a>
+      <a class="bar-code" href="https://github.com/andrew-abdelmalak/smart-cleaning-robot">Code<svg class="out" aria-hidden="true"><use href="#i-out"/></svg></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="title">
+      <div class="intro">
+        <h1 id="title">Smart Cleaning Robot</h1>
+        <p class="lede">A floor-cleaning robot I designed and built from scratch for my bachelor thesis: the 3D-printed body, the circuit board, and the code that drives it. Its real code runs right here: take the remote and try it.</p>
+        <p class="byline">Andrew Abdelmalak · Mechatronics Engineering, German University in Cairo · 2025</p>
+
+        <div class="proof">
+          <dl class="specs">
+            <div><dt>in parts, 2025</dt><dd>3,950 EGP</dd></div>
+            <div><dt>per charge</dt><dd>60+ min</dd></div>
+            <div><dt>35 cm across</dt><dd>2.65 kg</dd></div>
+          </dl>
+
+          <figure class="clip">
+            <video src="media/robot-driving.mp4" poster="img/robot-driving-poster.webp" muted loop playsinline preload="metadata" data-autoplay aria-describedby="clip-cap"></video>
+            <figcaption id="clip-cap"><strong>The real robot</strong>, filmed for the thesis, driving toward a doormat. 7 s, no sound.</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="remote" id="remote">
+        <div class="room">
+          <canvas id="room" role="img" aria-label="Top-down drawing of a room: a round black robot on a wooden floor with a sofa, an armchair, a cabinet, a round table, and a plant. Dust specks disappear where it cleans."></canvas>
+          <p class="room-tag"><span>Real firmware</span> Drawn room</p>
+          <p class="room-loading" id="bench-loading">Starting the firmware in your browser…</p>
+        </div>
+
+        <div class="room-controls">
+          <button class="chip" id="lid-button" type="button">Press the lid button</button>
+          <button class="chip" id="room-reset" type="button">Reset room</button>
+        </div>
+
+        <div class="console">
+          <div class="pad" role="group" aria-label="Remote control, laid out like the phone app that drove the real robot">
+            <span class="key key-empty" aria-hidden="true"></span>
+            <button class="key" type="button" data-cmd="FORWARD" aria-pressed="false"><svg aria-hidden="true"><use href="#i-up"/></svg><span class="key-label">Drive</span><span class="key-cmd">FORWARD</span></button>
+            <button class="key key-clean" type="button" data-cmd="CLEAN" aria-pressed="false"><svg aria-hidden="true"><use href="#i-clean"/></svg><span class="key-label">Start cleaning</span><span class="key-cmd">CLEAN</span></button>
+            <button class="key" type="button" data-cmd="LEFT" aria-pressed="false"><svg aria-hidden="true"><use href="#i-left"/></svg><span class="key-label">Turn left</span><span class="key-cmd">LEFT</span></button>
+            <button class="key" type="button" data-cmd="HORN" aria-pressed="false"><svg aria-hidden="true"><use href="#i-horn"/></svg><span class="key-label">Honk</span><span class="key-cmd">HORN</span></button>
+            <button class="key" type="button" data-cmd="RIGHT" aria-pressed="false"><svg aria-hidden="true"><use href="#i-right"/></svg><span class="key-label">Turn right</span><span class="key-cmd">RIGHT</span></button>
+            <button class="key" type="button" data-cmd="FAN" aria-pressed="false"><svg aria-hidden="true"><use href="#i-fan"/></svg><span class="key-label">Fan</span><span class="key-cmd">FAN</span></button>
+            <button class="key" type="button" data-cmd="BACKWARD" aria-pressed="false"><svg aria-hidden="true"><use href="#i-down"/></svg><span class="key-label">Reverse</span><span class="key-cmd">BACKWARD</span></button>
+            <span class="key key-empty" aria-hidden="true"></span>
+          </div>
+
+          <div class="readout">
+            <p class="status" id="bench-status" aria-live="polite">Starting the firmware.</p>
+            <dl class="meters">
+              <div><dt>State</dt><dd id="bench-state">-</dd></div>
+              <div><dt>Distance ahead</dt><dd id="bench-sonar">-</dd></div>
+              <div><dt>Motor power L / R</dt><dd id="bench-power">-</dd></div>
+              <div><dt>Wheel pulses L / R</dt><dd id="bench-pulses">-</dd></div>
+              <div><dt>Status light</dt><dd id="bench-led">-</dd></div>
+              <div><dt>Fan</dt><dd id="bench-fan">-</dd></div>
+            </dl>
+            <ol class="log" id="bench-log" aria-label="Commands, events, and firmware output"></ol>
+            <div class="readout-foot">
+              <span>Connected to <span id="bench-name">PicoRobot</span></span>
+              <span class="foot-buttons">
+                <button class="sound" id="bench-sound" type="button" aria-pressed="true">Sound</button>
+                <button class="link" id="bench-link" type="button">Disconnect</button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sim-note" aria-label="About the room">
+      <p>The robot in the room runs its real firmware, <a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/firmware/main.py">firmware/main.py</a>, unchanged, on MicroPython compiled to WebAssembly. Every stop, turn, honk, and blink comes from that code. The room, the dust, and the floor grip are drawn: each wheel turns as fast as the firmware's own motor model predicts, slowed to match the pace of the real clip. Arrow keys drive it while the remote has focus.</p>
+    </section>
+
+    <section class="footage" aria-labelledby="footage-title">
+      <h2 id="footage-title">The real robot, on real floors</h2>
+      <div class="footage-grid">
+        <figure>
+          <video src="media/robot-top-view.mp4" poster="img/robot-top-view-poster.webp" muted loop playsinline preload="none" controls data-autoplay></video>
+          <figcaption>One press of the green button on the lid, and it starts cleaning on its own. 18 seconds, no sound.</figcaption>
+        </figure>
+        <figure>
+          <video src="media/phone-control.mp4" poster="img/phone-control-poster.webp" muted loop playsinline preload="none" controls data-autoplay></video>
+          <figcaption>Driving it from a phone over Bluetooth, with the same button layout as the remote above. 31 seconds, no sound.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="build" id="build" aria-labelledby="build-title">
+      <div class="section-head">
+        <h2 id="build-title">From breadboard to finished robot</h2>
+        <p>I did every part myself: the body, the electronics, and the software. These are the stages, in order.</p>
+      </div>
+      <ol class="stages">
+        <li class="stage" style="--ar: 1.489; --row: 4.286">
+          <a class="zoom" href="img/proteus.webp" data-view><img src="img/proteus.webp" width="1200" height="806" loading="lazy" alt="Circuit simulation in Proteus: an Arduino board wired to an ultrasonic sensor, an H-bridge, two motors, a fan, and start and stop buttons."></a>
+          <p><span class="tool">Proteus</span> Checked the obstacle-avoidance logic in a circuit simulator first.</p>
+        </li>
+        <li class="stage" style="--ar: 1.644; --row: 4.286">
+          <a class="zoom" href="img/breadboard.webp" data-view><img src="img/breadboard.webp" width="832" height="506" loading="lazy" alt="Breadboard prototype: the Pico W, motor driver, and a yellow gear motor connected with jumper wires on a desk."></a>
+          <p><span class="tool">Breadboard</span> Wired the controller, motor driver, sensor, and motors together to test them for real.</p>
+        </li>
+        <li class="stage" style="--ar: 1.153; --row: 4.286">
+          <a class="zoom" href="img/cad-open.webp" data-view><img src="img/cad-open.webp" width="1200" height="1041" loading="lazy" alt="SolidWorks model of the open round chassis, labelled with the DC motors, the debris collection chamber, and the ultrasonic sensor window."></a>
+          <p><span class="tool">SolidWorks</span> Designed the 35 cm round body, the debris chamber, and the mounts, then 3D-printed them in PLA+.</p>
+        </li>
+        <li class="stage" style="--ar: 1.626; --row: 3.448">
+          <a class="zoom" href="img/pcb-3d.webp" data-view><img src="img/pcb-3d.webp" width="1200" height="738" loading="lazy" alt="3D render of the custom green circuit board with the Pico W, a buck converter, and rows of screw terminals."></a>
+          <p><span class="tool">KiCad</span> Designed a two-layer, 100 × 50 mm circuit board to replace the loose wiring.</p>
+        </li>
+        <li class="stage" style="--ar: 0.826; --row: 3.448">
+          <a class="zoom" href="img/wiring.webp" data-view><img src="img/wiring.webp" width="1000" height="1210" loading="lazy" alt="Inside the robot: the debris chamber in the middle, two yellow motors, the circuit board, the motor driver, and the wiring."></a>
+          <p><span class="tool">Assembly</span> Fitted the motors, fan, battery, and electronics inside the shell.</p>
+        </li>
+        <li class="stage" style="--ar: 0.996; --row: 3.448">
+          <a class="zoom" href="img/bottom.webp" data-view><img src="img/bottom.webp" width="1000" height="1004" loading="lazy" alt="Underside of the robot: two drive wheels, a front caster, and the rectangular intake nozzle in the middle."></a>
+          <p><span class="tool">Underside</span> Two drive wheels, a caster, and the intake that feeds the debris chamber.</p>
+        </li>
+      </ol>
+      <figure class="finished">
+        <a class="zoom" href="img/robot-iso.webp" data-view><img src="img/robot-iso.webp" width="1400" height="1154" loading="lazy" alt="The finished robot: a round black 3D-printed body with a metal filter, a green button, and a green light on the lid, and the ultrasonic sensor in a window at the front."></a>
+        <figcaption>The finished robot: 3,950 EGP in parts in 2025, about 80 USD at the time. Store-bought robot vacuums were listed at 100 to 900 USD.</figcaption>
+      </figure>
+    </section>
+
+    <section class="story" aria-labelledby="story-title">
+      <h2 id="story-title">The hardest bug: a smarter controller that stalled the motors</h2>
+      <div class="story-body">
+        <p>Two cheap motors never spin at exactly the same speed, so a robot told to go straight drifts. I added wheel sensors and a feedback controller (a PID controller) that pushes harder on whichever wheel falls behind.</p>
+        <p>It worked until the robot turned. The controller asked for so much current that the supply voltage sagged and a motor stalled, and the robot stopped dead.</p>
+        <p>The fix was to let a simple model of each motor supply most of the power (feed-forward) and keep the feedback controller for small corrections only. The robot stayed stable, in exchange for slightly less precise steering.</p>
+      </div>
+      <figure class="diagram">
+        <a class="zoom" href="diagrams/control-loop.svg" data-view><img src="diagrams/control-loop.svg" width="820" height="400" loading="lazy" alt="Control loop: the target speed passes through a feed-forward motor model to set PWM, the wheel encoders measure the left-right pulse difference, and a PID adds a correction to the target speed of each wheel."></a>
+      </figure>
+    </section>
+
+    <section class="results" id="results" aria-labelledby="results-title">
+      <div class="section-head">
+        <h2 id="results-title">What it does, measured</h2>
+        <p>From the prototype tests in the thesis (Table 4.2 and section 5.1.1).</p>
+      </div>
+      <div class="results-grid">
+        <table class="sheet">
+          <tbody>
+            <tr><th scope="row">Runs on one charge</th><td>More than <b>60 min</b> of continuous cleaning</td></tr>
+            <tr><th scope="row">Phone range</th><td>Stable at more than <b>5 m</b> indoors</td></tr>
+            <tr><th scope="row">Cost of parts</th><td><b>3,950 EGP</b>, about 80 USD at the June 2025 exchange rate</td></tr>
+            <tr><th scope="row">Store-bought robots</th><td>100 to 900 USD in 2025, from basic models to the Roomba 980</td></tr>
+            <tr><th scope="row">Size and weight</th><td><b>35 cm</b> across, 17 cm tall, <b>2.65 kg</b></td></tr>
+            <tr><th scope="row">Power</th><td>About <b>26 W</b> at 12 V, estimated from part ratings</td></tr>
+            <tr><th scope="row">Picks up</th><td>Light debris such as paper bits and dust, on hard floors</td></tr>
+            <tr><th scope="row">Straight driving</th><td>Noticeably less drift with the controller than without</td></tr>
+            <tr><th scope="row">Stuck wheel</th><td>Detected and recovered in simulated stuck conditions</td></tr>
+          </tbody>
+        </table>
+        <div class="limits">
+          <h3>What it can't do yet</h3>
+          <ul>
+            <li>It doesn't map the room. It turns left at every obstacle, so it can miss spots, as the room at the top shows.</li>
+            <li>It has no brushes and no flap to hold debris in, so it picks up only light, loose dirt.</li>
+            <li>Any phone in Bluetooth range can connect and drive it; there is no pairing.</li>
+            <li>A disconnected distance sensor reads as a clear path.</li>
+            <li>Turns have no time limit, so a failed wheel sensor during a turn keeps it spinning.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="engineers" id="engineers" aria-labelledby="eng-title">
+      <div class="section-head">
+        <h2 id="eng-title">For engineers</h2>
+        <p>The firmware is one MicroPython file on a Raspberry Pi Pico W, running a 20 ms control loop. After the thesis I added 42 host-side tests that run the real firmware against fake hardware, continuous integration, and fixes for five control-logic bugs, each found with a failing test first.</p>
+      </div>
+      <div class="eng-grid">
+        <figure class="diagram">
+          <a class="zoom" href="diagrams/architecture.svg" data-view><img src="diagrams/architecture.svg" width="1060" height="512" loading="lazy" alt="Block diagram: a phone, push button, ultrasonic sensor, and wheel encoders feed the Raspberry Pi Pico W, which drives the motors through an L298N H-bridge and switches the suction fan and status LED."></a>
+          <figcaption>Hardware: the sensors and the phone feed the Pico W, which drives two motors through an L298N H-bridge.</figcaption>
+        </figure>
+        <figure class="diagram">
+          <a class="zoom" href="diagrams/state-machine.svg" data-view><img src="diagrams/state-machine.svg" width="1000" height="488" loading="lazy" alt="State machine: from IDLE, CLEAN starts forward driving; an obstacle closer than 15 cm triggers a 39-pulse left pivot, and a wheel stall longer than 800 ms triggers reverse then the same pivot, both returning to forward driving."></a>
+          <figcaption>Autonomous cleaning: the state machine you drove at the top of the page.</figcaption>
+        </figure>
+      </div>
+      <div class="gains-wrap">
+        <table class="gains">
+          <caption>PID gains, tuned by hand on the prototype</caption>
+          <thead><tr><th scope="col">Loop</th><th scope="col">Purpose</th><th scope="col">P</th><th scope="col">I</th><th scope="col">D</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Straight</th><td>Keep both wheels at the same distance</td><td>0.8</td><td>0.15</td><td>0.25</td></tr>
+            <tr><th scope="row">Turn progress</th><td>Reach the 39-pulse pivot</td><td>0.6</td><td>0.1</td><td>0.2</td></tr>
+            <tr><th scope="row">Turn balance</th><td>Share the pivot between the wheels</td><td>1.5</td><td>0.05</td><td>0.3</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="links">
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/firmware/main.py">firmware/main.py</a> The firmware</li>
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/tests">tests/</a> Host tests and hardware fakes</li>
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot#readme">README</a> Setup, commands, pins, and limitations</li>
+      </ul>
+    </section>
+
+    <section class="thesis" id="thesis" aria-labelledby="thesis-title">
+      <h2 id="thesis-title">The thesis</h2>
+      <p class="thesis-title"><cite>Design and Implementation of a Smart Cleaning Robot</cite></p>
+      <p>Andrew Khalil Samuel Abdelmalak. Bachelor thesis, Faculty of Engineering and Materials Sciences, German University in Cairo, June 2025. Supervised by Prof. Dr. Walid Atef Hafez Omran, co-supervised by Dr. Hisham Mostafa El Sherif, reviewed by Dr. M. A. Moustafa Hassan.</p>
+      <ul class="thesis-links">
+        <li><a class="button" href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/docs/thesis/thesis.pdf">Read the thesis <span>PDF, 69 pages</span></a></li>
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/docs/thesis">LaTeX source</a></li>
+        <li><a href="https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f">Overleaf (read only)</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Andrew Abdelmalak</p>
+    <ul>
+      <li><a href="https://github.com/andrew-abdelmalak">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/andrew3abdelmalak/">LinkedIn</a></li>
+      <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot">Source code</a>, MIT License</li>
+    </ul>
+  </footer>
+
+  <dialog class="viewer" id="viewer" aria-label="Enlarged image">
+    <div class="viewer-bar">
+      <p class="viewer-caption" id="viewer-caption"></p>
+      <button class="viewer-close" type="button" id="viewer-close">Close<svg aria-hidden="true" viewBox="0 0 16 16"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="viewer-body" id="viewer-body"></div>
+  </dialog>
+
+  <script>
+    // Play the silent clips only while they are on screen, and never
+    // automatically when the visitor prefers reduced motion.
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) e.target.play().catch(() => {});
+          else e.target.pause();
+        }
+      }, { threshold: 0.4 });
+      document.querySelectorAll("video[data-autoplay]").forEach((v) => io.observe(v));
+    }
+
+    // Diagrams and photos open in a viewer; Close, Esc, or a click outside closes it.
+    const viewer = document.getElementById("viewer");
+    const viewerImg = document.createElement("img");
+    document.getElementById("viewer-body").append(viewerImg);
+    document.querySelectorAll("a[data-view]").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        if (!viewer.showModal) return;
+        e.preventDefault();
+        const img = a.querySelector("img");
+        viewerImg.src = a.href;
+        viewerImg.alt = img.alt;
+        viewer.classList.toggle("is-diagram", a.href.endsWith(".svg"));
+        document.getElementById("viewer-caption").textContent = img.alt;
+        viewer.showModal();
+      });
+    });
+    document.getElementById("viewer-close").addEventListener("click", () => viewer.close());
+    viewer.addEventListener("click", (e) => {
+      if (e.target === viewer) viewer.close();
+    });
+  </script>
+</body>
+</html>
