@@ -8,7 +8,10 @@
 // re-rank when the model has loaded. The ranking mirrors rank() in the
 // build script; keep the two in step.
 
-const TRANSFORMERS = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js";
+// transformers.js and its ONNX runtime are served by the site itself;
+// scripts/vendor.json pins their versions and hashes.
+const TRANSFORMERS = "./vendor/transformers/transformers.min.js";
+const ORT = (file) => new URL(`vendor/ort/ort-wasm-simd-threaded.asyncify.${file}`, import.meta.url).href;
 const KEYWORD_WEIGHT = 0.3;
 const STOPWORDS = new Set(
   ("a an the of to and or is are was were how what why which does do did you" +
@@ -62,13 +65,14 @@ function loadModel(model) {
     setStatus(`Loading the language model (about 30 MB, once): ${pct}%. Until then, results match keywords.`);
   };
   return import(TRANSFORMERS)
-    .then(({ pipeline }) =>
-      pipeline("feature-extraction", model.model, {
+    .then(({ pipeline, env }) => {
+      env.backends.onnx.wasm.wasmPaths = { mjs: ORT("mjs"), wasm: ORT("wasm") };
+      return pipeline("feature-extraction", model.model, {
         revision: model.revision,
         dtype: model.dtype,
         progress_callback: progress,
-      }),
-    )
+      });
+    })
     .then((extract) => {
       modelReady = true;
       return async (question) => (await extract(question, { pooling: "mean", normalize: true })).data;

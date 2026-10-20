@@ -8,8 +8,8 @@
 (() => {
   "use strict";
 
-  const MICROPYTHON =
-    "https://cdn.jsdelivr.net/npm/@micropython/micropython-webassembly-pyscript@1.29.0-6/micropython.mjs";
+  // Served by the site itself; scripts/vendor.json pins its version and hash.
+  const MICROPYTHON = "./vendor/micropython/micropython.mjs";
   const MOVES = ["FORWARD", "BACKWARD", "LEFT", "RIGHT"];
   const STOP_CM = 15; // OBSTACLE_THRESHOLD_CM in the firmware
 
@@ -69,6 +69,7 @@
   let dustTotal = 1;
   let trail; // offscreen canvas: the floor the nozzle has passed over
   let trailPoints = [];
+  let trailCells = new Set();
   let distanceCm = 999;
 
   // ---------------------------------------------------------------
@@ -162,6 +163,7 @@
     }
     dustTotal = dust.length;
     trailPoints = [];
+    trailCells = new Set();
     paintTrail();
   }
 
@@ -192,8 +194,11 @@
     }
     if (s.fan) {
       dust = dust.filter((p) => (p.x - robot.x) ** 2 + (p.y - robot.y) ** 2 > NOZZLE_R ** 2);
-      const lastPoint = trailPoints[trailPoints.length - 1];
-      if (!lastPoint || Math.hypot(lastPoint.x - robot.x, lastPoint.y - robot.y) > 0.015) {
+      // One stamp per 3 cm cell: the list stays bounded by the room's area
+      // however long the robot cleans, and the 13 cm stamps hide the grid.
+      const cell = `${Math.round(robot.x / 0.03)},${Math.round(robot.y / 0.03)}`;
+      if (!trailCells.has(cell)) {
+        trailCells.add(cell);
         trailPoints.push({ x: robot.x, y: robot.y });
         stampTrail(robot.x, robot.y);
       }
@@ -630,8 +635,11 @@
       key.setAttribute("aria-disabled", String(ignored));
       let pressed = s.manual === cmd;
       if (cmd === "CLEAN") {
-        pressed = s.autonomous;
-        key.querySelector(".key-label").textContent = pressed ? "Stop cleaning" : "Start cleaning";
+        // The label carries the state, so a screen reader hears it once,
+        // not as "Stop cleaning, pressed".
+        key.querySelector(".key-label").textContent = s.autonomous ? "Stop cleaning" : "Start cleaning";
+        key.classList.toggle("is-on", s.autonomous);
+        continue;
       } else if (cmd === "HORN") {
         pressed = s.horn;
       } else if (cmd === "FAN") {

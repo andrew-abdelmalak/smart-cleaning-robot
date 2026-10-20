@@ -27,3 +27,6 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Third-party browser files, fetched by scripts/fetch_vendor.py
+site/vendor/

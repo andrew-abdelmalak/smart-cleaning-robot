@@ -1,3 +1,32 @@
+/* Fonts are served by the site (Latin subset from Google Fonts, SIL OFL 1.1,
+   licences in fonts/). Geist and Geist Mono are variable fonts. */
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/geist.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("fonts/geist-mono.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("fonts/instrument-serif.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("fonts/instrument-serif-italic.woff2") format("woff2");
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   --paper: #f5f5f5;
   --paper-2: #ebecef;
@@ -422,12 +451,15 @@ h1 {
   transform: translateY(1px);
 }
 
-.key[aria-pressed="true"] {
+/* .is-on: the CLEAN key, whose label already says Start or Stop cleaning. */
+.key[aria-pressed="true"],
+.key.is-on {
   background: var(--key-hover);
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
-.key[aria-pressed="true"] svg {
+.key[aria-pressed="true"] svg,
+.key.is-on svg {
   stroke: var(--accent);
 }
 
