@@ -70,23 +70,15 @@
       </div>
 
       <div class="remote" id="remote">
-        <div class="stand">
-          <canvas id="stand" role="img" aria-label="Top view of the robot on a test stand, its sensor facing a box on a ruler. The wheels, the green status light, and the fan move as the firmware drives them."></canvas>
-          <p class="stand-tag"><span>Real firmware</span> Simulated test stand</p>
-          <p class="stand-loading" id="bench-loading">Starting the firmware in your browser…</p>
+        <div class="room">
+          <canvas id="room" role="img" aria-label="Top-down drawing of a room: a round black robot on a wooden floor with a sofa, an armchair, a cabinet, a round table, and a plant. Dust specks disappear where it cleans."></canvas>
+          <p class="room-tag"><span>Real firmware</span> Drawn room</p>
+          <p class="room-loading" id="bench-loading">Starting the firmware in your browser…</p>
         </div>
 
-        <div class="stand-controls">
-          <label class="distance" for="bench-distance">
-            <span>Box in front of the sensor</span>
-            <output id="bench-distance-out" for="bench-distance">80 cm</output>
-          </label>
-          <input id="bench-distance" type="range" min="3" max="120" step="1" value="80">
-          <div class="stand-buttons">
-            <button class="chip" id="lid-button" type="button">Press the lid button</button>
-            <button class="chip" id="hold-left" type="button" aria-pressed="false">Grab left wheel</button>
-            <button class="chip" id="hold-right" type="button" aria-pressed="false">Grab right wheel</button>
-          </div>
+        <div class="room-controls">
+          <button class="chip" id="lid-button" type="button">Press the lid button</button>
+          <button class="chip" id="room-reset" type="button">Reset room</button>
         </div>
 
         <div class="console">
@@ -106,6 +98,7 @@
             <p class="status" id="bench-status" aria-live="polite">Starting the firmware.</p>
             <dl class="meters">
               <div><dt>State</dt><dd id="bench-state">-</dd></div>
+              <div><dt>Distance ahead</dt><dd id="bench-sonar">-</dd></div>
               <div><dt>Motor power L / R</dt><dd id="bench-power">-</dd></div>
               <div><dt>Wheel pulses L / R</dt><dd id="bench-pulses">-</dd></div>
               <div><dt>Status light</dt><dd id="bench-led">-</dd></div>
@@ -124,8 +117,8 @@
       </div>
     </section>
 
-    <section class="sim-note" aria-label="About the test stand">
-      <p>This is the robot's real firmware, <a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/firmware/main.py">firmware/main.py</a>, running unchanged in your browser on MicroPython compiled to WebAssembly. Only the hardware is simulated: the robot sits on a stand with its wheels in the air, and each motor turns as fast as the firmware's own motor model predicts. Every number above comes from the firmware's variables. Arrow keys drive it while the remote has focus.</p>
+    <section class="sim-note" aria-label="About the room">
+      <p>The robot in the room runs its real firmware, <a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/firmware/main.py">firmware/main.py</a>, unchanged, on MicroPython compiled to WebAssembly. Every stop, turn, honk, and blink comes from that code. The room, the dust, and the floor grip are drawn: each wheel turns as fast as the firmware's own motor model predicts, slowed to match the pace of the real clip. Arrow keys drive it while the remote has focus.</p>
     </section>
 
     <section class="footage" aria-labelledby="footage-title">
@@ -213,7 +206,7 @@
         <div class="limits">
           <h3>What it can't do yet</h3>
           <ul>
-            <li>It doesn't map the room. It turns left at every obstacle, so it can miss spots.</li>
+            <li>It doesn't map the room. It turns left at every obstacle, so it can miss spots, as the room at the top shows.</li>
             <li>It has no brushes and no flap to hold debris in, so it picks up only light, loose dirt.</li>
             <li>Any phone in Bluetooth range can connect and drive it; there is no pairing.</li>
             <li>A disconnected distance sensor reads as a clear path.</li>

@@ -1,9 +1,10 @@
-// Runs the robot's real firmware, firmware/main.py, in the browser.
+// Runs the robot's real firmware, firmware/main.py, in a drawn room.
 //
 // MicroPython compiled to WebAssembly executes the firmware file unchanged.
-// bench.py replaces the hardware with fakes: a simulated test stand where
-// the wheels spin in the air. This file loads both, forwards the remote's
-// commands over the fake Bluetooth link, and draws what the firmware does.
+// bench.py fakes the hardware: motors, encoders, Bluetooth, the lid button,
+// and the ultrasonic sensor. This file moves the robot through the room from
+// the wheel turns the firmware produces, feeds back what the sensor sees and
+// when the robot is pushing against furniture, and draws the result.
 (() => {
   "use strict";
 
@@ -11,16 +12,38 @@
     "https://cdn.jsdelivr.net/npm/@micropython/micropython-webassembly-pyscript@1.29.0-6/micropython.mjs";
   const MOVES = ["FORWARD", "BACKWARD", "LEFT", "RIGHT"];
   const STOP_CM = 15; // OBSTACLE_THRESHOLD_CM in the firmware
-  const MAX_CM = 120;
+
+  // Robot geometry in metres: body and wheel from the thesis; the track
+  // width is assumed. The floor load slows the wheels to about a third of
+  // their free speed, chosen to match the pace of the real driving clip.
+  const ROBOT_R = 0.175;
+  const WHEEL_CIRCUMFERENCE = Math.PI * 0.066;
+  const TRACK = 0.26;
+  const FLOOR_LOAD = 0.35;
+  const NOZZLE_R = 0.1;
+
+  // Room, 4.8 m by 2.7 m, with simple furniture.
+  const ROOM_W = 4.8;
+  const ROOM_H = 2.7;
+  const RECTS = [
+    { x: 0.35, y: 0, w: 1.9, h: 0.85, kind: "sofa" },
+    { x: 3.25, y: 0, w: 0.75, h: 0.72, kind: "chair" },
+    { x: 4.25, y: 1.0, w: 0.55, h: 1.2, kind: "cabinet" },
+  ];
+  const CIRCLES = [
+    { x: 2.95, y: 1.75, r: 0.36, kind: "table" },
+    { x: 0.32, y: 2.38, r: 0.22, kind: "plant" },
+  ];
 
   const $ = (id) => document.getElementById(id);
-  const canvas = $("stand");
+  const canvas = $("room");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const ui = {
     loading: $("bench-loading"),
     status: $("bench-status"),
     state: $("bench-state"),
+    sonar: $("bench-sonar"),
     power: $("bench-power"),
     pulses: $("bench-pulses"),
     led: $("bench-led"),
@@ -29,23 +52,143 @@
     name: $("bench-name"),
     link: $("bench-link"),
     sound: $("bench-sound"),
-    distance: $("bench-distance"),
-    distanceOut: $("bench-distance-out"),
-    holdLeft: $("hold-left"),
-    holdRight: $("hold-right"),
     lid: $("lid-button"),
+    reset: $("room-reset"),
     keys: [...document.querySelectorAll(".key[data-cmd]")],
   };
-  const controls = [ui.link, ui.distance, ui.holdLeft, ui.holdRight, ui.lid, ...ui.keys];
+  const controls = [ui.link, ui.lid, ui.reset, ...ui.keys];
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  let mp = null;
+  let loadBench = null; // imports bench.py again for a freshly booted robot
   let bench = null; // the Python Bench object from bench.py
   let s = null; // latest state from bench.state()
-  let distance = Number(ui.distance.value);
+  let robot;
+  let dust;
+  let distanceCm = 999;
 
   // ---------------------------------------------------------------
-  // Log: commands sent, stand events, and the firmware's own print output
+  // Room geometry
+  // ---------------------------------------------------------------
+  function seededRandom(seed) {
+    return () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+  }
+
+  function hitsFurniture(x, y, r) {
+    for (const o of RECTS) {
+      const cx = Math.max(o.x, Math.min(x, o.x + o.w));
+      const cy = Math.max(o.y, Math.min(y, o.y + o.h));
+      if ((x - cx) ** 2 + (y - cy) ** 2 < r * r) return true;
+    }
+    for (const c of CIRCLES) {
+      if ((x - c.x) ** 2 + (y - c.y) ** 2 < (r + c.r) ** 2) return true;
+    }
+    return false;
+  }
+
+  function collides(x, y) {
+    if (x - ROBOT_R < 0 || y - ROBOT_R < 0 || x + ROBOT_R > ROOM_W || y + ROBOT_R > ROOM_H) {
+      return true;
+    }
+    return hitsFurniture(x, y, ROBOT_R);
+  }
+
+  // Distance from (x, y) along the unit vector (dx, dy) to the nearest surface, in metres.
+  function castRay(x, y, dx, dy) {
+    let best = Infinity;
+    if (dx > 0) best = Math.min(best, (ROOM_W - x) / dx);
+    if (dx < 0) best = Math.min(best, -x / dx);
+    if (dy > 0) best = Math.min(best, (ROOM_H - y) / dy);
+    if (dy < 0) best = Math.min(best, -y / dy);
+    for (const o of RECTS) {
+      let t0 = -Infinity;
+      let t1 = Infinity;
+      for (const [p, d, lo, hi] of [
+        [x, dx, o.x, o.x + o.w],
+        [y, dy, o.y, o.y + o.h],
+      ]) {
+        if (Math.abs(d) < 1e-9) {
+          if (p < lo || p > hi) t0 = Infinity;
+        } else {
+          const a = (lo - p) / d;
+          const b = (hi - p) / d;
+          t0 = Math.max(t0, Math.min(a, b));
+          t1 = Math.min(t1, Math.max(a, b));
+        }
+      }
+      if (t0 <= t1 && t0 > 0) best = Math.min(best, t0);
+    }
+    for (const c of CIRCLES) {
+      const fx = x - c.x;
+      const fy = y - c.y;
+      const b = fx * dx + fy * dy;
+      const disc = b * b - (fx * fx + fy * fy - c.r * c.r);
+      if (disc >= 0) {
+        const t = -b - Math.sqrt(disc);
+        if (t > 0) best = Math.min(best, t);
+      }
+    }
+    return best;
+  }
+
+  // What the HC-SR04 sees: three rays across a 15-degree cone from the front
+  // edge. Past its 4 m range there is no echo, which the firmware reads as 999.
+  function measureDistance() {
+    const sx = robot.x + Math.cos(robot.th) * ROBOT_R;
+    const sy = robot.y + Math.sin(robot.th) * ROBOT_R;
+    let d = Infinity;
+    for (const a of [-0.13, 0, 0.13]) {
+      d = Math.min(d, castRay(sx, sy, Math.cos(robot.th + a), Math.sin(robot.th + a)));
+    }
+    return d > 4 ? 999 : d * 100;
+  }
+
+  function resetRoom() {
+    robot = { x: 1.15, y: 1.85, th: 0, turns: [0, 0] };
+    distanceCm = measureDistance();
+    const rand = seededRandom(7);
+    dust = [];
+    while (dust.length < 2400) {
+      const x = rand() * ROOM_W;
+      const y = rand() * ROOM_H;
+      if (!hitsFurniture(x, y, 0.02)) dust.push({ x, y, s: 0.6 + rand() * 0.9 });
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Moving the robot from the firmware's wheel turns
+  // ---------------------------------------------------------------
+  // True when both wheels drive the same way and a 1 cm step that way would
+  // hit something: the wheels then stall, as they do against a wall.
+  function pushingAgainstFurniture() {
+    if (!s || s.duty[0] === 0 || s.duty[1] === 0 || s.forward[0] !== s.forward[1]) return false;
+    const step = s.forward[0] ? 0.01 : -0.01;
+    return collides(robot.x + Math.cos(robot.th) * step, robot.y + Math.sin(robot.th) * step);
+  }
+
+  function moveRobot() {
+    const dl = (s.turns[0] - robot.turns[0]) * WHEEL_CIRCUMFERENCE;
+    const dr = (s.turns[1] - robot.turns[1]) * WHEEL_CIRCUMFERENCE;
+    robot.turns = s.turns.slice();
+    const th = robot.th + (dl - dr) / TRACK;
+    const v = (dl + dr) / 2;
+    const x = robot.x + Math.cos(th) * v;
+    const y = robot.y + Math.sin(th) * v;
+    robot.th = th;
+    // An uneven pivot scrapes along furniture: keep the turn, drop the slide.
+    if (!collides(x, y)) {
+      robot.x = x;
+      robot.y = y;
+    }
+    if (s.fan) {
+      dust = dust.filter((p) => (p.x - robot.x) ** 2 + (p.y - robot.y) ** 2 > NOZZLE_R ** 2);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Log: commands sent, events, and the firmware's own print output
   // ---------------------------------------------------------------
   const logLines = [];
 
@@ -80,13 +223,19 @@
         fetch("firmware/main.py").then(textOrThrow),
         fetch("bench.py").then(textOrThrow),
       ]);
-      mp = await loadMicroPython({ stdout: (line) => log(line, "serial") });
+      const mp = await loadMicroPython({ stdout: (line) => log(line, "serial") });
       mp.FS.writeFile("/main.py", firmware);
       mp.runPython("import sys\nsys.path.insert(0, '/')");
-      mp.runPython(benchSource);
-      bench = mp.globals.get("bench");
-      bench.set_distance(distance);
-      read();
+      loadBench = () => {
+        mp.runPython("sys.modules.pop('main', None)"); // the next import boots it afresh
+        mp.runPython(benchSource);
+        bench = mp.globals.get("bench");
+        bench.set_load(FLOOR_LOAD);
+        resetRoom();
+        bench.set_distance(distanceCm);
+        read();
+      };
+      loadBench();
       ui.name.textContent = s.name;
       ui.loading.hidden = true;
       controls.forEach((c) => (c.disabled = false));
@@ -128,43 +277,29 @@
     wake();
   }
 
-  ui.keys.forEach((key) => key.addEventListener("click", () => send(key.dataset.cmd)));
+  for (const key of ui.keys) key.addEventListener("click", () => send(key.dataset.cmd));
 
   const ARROWS = { ArrowUp: "FORWARD", ArrowDown: "BACKWARD", ArrowLeft: "LEFT", ArrowRight: "RIGHT" };
   $("remote").addEventListener("keydown", (e) => {
     const cmd = ARROWS[e.key];
-    if (!cmd || e.target === ui.distance || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!cmd || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     send(cmd);
   });
 
-  function setDistance(cm) {
-    distance = Math.round(Math.min(MAX_CM, Math.max(3, cm)));
-    ui.distance.value = distance;
-    ui.distanceOut.textContent = `${distance} cm`;
-    if (bench) bench.set_distance(distance);
-    draw();
-    wake();
-  }
-  ui.distance.addEventListener("input", () => setDistance(Number(ui.distance.value)));
-
-  function toggleHold(button, index, label) {
-    const held = button.getAttribute("aria-pressed") !== "true";
-    button.setAttribute("aria-pressed", String(held));
-    bench.hold_wheel(index, held);
-    log(held ? `${label} wheel grabbed` : `${label} wheel let go`, "event");
-    wake();
-  }
-  ui.holdLeft.addEventListener("click", () => toggleHold(ui.holdLeft, 0, "Left"));
-  ui.holdRight.addEventListener("click", () => toggleHold(ui.holdRight, 1, "Right"));
-
-  function pressLid() {
-    if (!bench) return;
+  ui.lid.addEventListener("click", () => {
     bench.press_button();
     log("Lid button pressed", "event");
     wake();
-  }
-  ui.lid.addEventListener("click", pressLid);
+  });
+
+  ui.reset.addEventListener("click", () => {
+    loadBench();
+    logLines.length = 0;
+    log("Room reset and firmware restarted", "event");
+    updateUi();
+    draw();
+  });
 
   ui.link.addEventListener("click", () => {
     if (s.connected) bench.disconnect();
@@ -174,28 +309,6 @@
     updateUi();
     wake();
   });
-
-  // Drag the box along the ruler, or press the button drawn on the lid.
-  let dragging = false;
-  const onButton = (p) => Math.hypot(p.x - geo.buttonX, p.y - geo.cy) < 4;
-  canvas.addEventListener("pointerdown", (e) => {
-    if (!bench) return;
-    const p = toCm(e);
-    if (onButton(p)) {
-      pressLid();
-    } else if (p.x > geo.sensorX + 2) {
-      dragging = true;
-      canvas.setPointerCapture(e.pointerId);
-      setDistance(p.x - geo.sensorX);
-    }
-  });
-  canvas.addEventListener("pointermove", (e) => {
-    const p = toCm(e);
-    if (dragging) setDistance(p.x - geo.sensorX);
-    canvas.style.cursor = onButton(p) ? "pointer" : p.x > geo.sensorX + 2 ? "ew-resize" : "default";
-  });
-  canvas.addEventListener("pointerup", () => (dragging = false));
-  canvas.addEventListener("pointercancel", () => (dragging = false));
 
   // ---------------------------------------------------------------
   // Horn sound: a quiet buzz that follows the firmware's LED flash.
@@ -228,194 +341,169 @@
   });
 
   // ---------------------------------------------------------------
-  // Drawing, to scale in centimetres: the robot, the ruler, the box.
+  // Drawing
   // ---------------------------------------------------------------
-  const geo = { w: 175, h: 87.5, cx: 26, cy: 43.75, r: 17.5, sensorX: 43.5, buttonX: 17.5 };
-  let k = 4; // pixels per centimetre
+  let scale = 100;
   let dpr = 1;
 
-  function toCm(e) {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * geo.w,
-      y: ((e.clientY - rect.top) / rect.height) * geo.h,
-    };
-  }
-
   function resize() {
+    const w = canvas.clientWidth;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(canvas.clientWidth * dpr);
-    canvas.height = Math.round(canvas.clientWidth * (geo.h / geo.w) * dpr);
-    k = canvas.width / geo.w;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(w * (ROOM_H / ROOM_W) * dpr);
+    scale = (w / ROOM_W) * dpr;
     draw();
   }
 
   function draw() {
+    const k = scale;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#f5f5f5";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(k, 0, 0, k, 0, 0);
-    const { cx, cy, r, sensorX } = geo;
-    const near = distance < STOP_CM;
-    const objX = sensorX + distance;
 
-    // Stop zone and ruler.
-    ctx.fillStyle = near ? "rgba(235, 108, 54, 0.24)" : "rgba(235, 108, 54, 0.1)";
-    ctx.fillRect(sensorX, 7, STOP_CM, geo.h - 21);
-    // Labels never drop below 10 CSS pixels, even on a phone.
-    const label = Math.max(2.6, (10 * dpr) / k);
-    ctx.font = `500 ${label}px "Geist Mono", ui-monospace, monospace`;
-    ctx.strokeStyle = "#4f5d75";
-    ctx.fillStyle = "#4f5d75";
-    ctx.lineWidth = 0.25;
-    ctx.textAlign = "center";
-    const base = geo.h - 10;
+    // Floor boards every 0.3 m.
+    ctx.strokeStyle = "rgba(45, 49, 66, 0.07)";
+    ctx.lineWidth = dpr;
     ctx.beginPath();
-    ctx.moveTo(sensorX, base);
-    ctx.lineTo(sensorX + MAX_CM, base);
-    for (let cm = 0; cm <= MAX_CM; cm += 5) {
-      const len = cm % 30 === 0 ? 2.4 : 1.2;
-      ctx.moveTo(sensorX + cm, base);
-      ctx.lineTo(sensorX + cm, base - len);
-      if (cm % 30 === 0) ctx.fillText(cm === 0 ? "0 cm" : `${cm}`, sensorX + cm, base + 1.6 + label);
+    for (let y = 0.3; y < ROOM_H; y += 0.3) {
+      ctx.moveTo(0, y * k);
+      ctx.lineTo(canvas.width, y * k);
     }
     ctx.stroke();
-    ctx.fillStyle = "#a3401a";
-    ctx.textAlign = "left";
-    ctx.fillText("stop", sensorX + 1.2, base - 3.2);
 
-    // Sonar beam, about 15 degrees wide, out to the box.
-    const spread = Math.tan((7.5 * Math.PI) / 180) * distance;
-    ctx.beginPath();
-    ctx.moveTo(sensorX, cy);
-    ctx.lineTo(objX, cy - spread);
-    ctx.lineTo(objX, cy + spread);
-    ctx.closePath();
-    ctx.fillStyle = near ? "rgba(235, 108, 54, 0.45)" : "rgba(79, 93, 117, 0.14)";
-    ctx.fill();
+    // Dust.
+    ctx.fillStyle = "rgba(79, 93, 117, 0.6)";
+    for (const p of dust) {
+      const r = p.s * dpr;
+      ctx.fillRect(p.x * k - r / 2, p.y * k - r / 2, r, r);
+    }
 
-    // The box the visitor drags, with a grip.
-    ctx.fillStyle = "#e4e6ea";
+    // Furniture, drawn like a floor plan.
+    ctx.lineWidth = 1.25 * dpr;
     ctx.strokeStyle = "#2d3142";
-    ctx.lineWidth = 0.35;
-    ctx.beginPath();
-    ctx.roundRect(objX, cy - 14, 9, 28, 1);
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "#8a91a0";
-    ctx.beginPath();
-    for (const x of [3.4, 5.6]) {
-      ctx.moveTo(objX + x, cy - 4);
-      ctx.lineTo(objX + x, cy + 4);
-    }
-    ctx.stroke();
-
-    // Robot. A horn buzz shakes it slightly.
-    const shake = s && s.horn && s.duty[0] > 0 ? (Math.random() - 0.5) * 0.35 : 0;
-    ctx.save();
-    ctx.translate(cx + shake, cy);
-
-    // Wheel direction arrows beside the shell, longer when faster.
-    ctx.strokeStyle = "#eb6c36";
-    ctx.lineWidth = 0.7;
-    ctx.lineCap = "round";
-    for (const i of [0, 1]) {
-      const speed = s ? s.speed[i] : 0;
-      if (speed < 1) continue;
-      const y = i === 0 ? -r - 4 : r + 4;
-      const len = 4 + Math.min(speed, 120) / 10;
-      const d = s.forward[i] ? 1 : -1;
+    ctx.fillStyle = "#e4e6ea";
+    for (const o of RECTS) {
       ctx.beginPath();
-      ctx.moveTo((-len / 2) * d, y);
-      ctx.lineTo((len / 2) * d, y);
-      ctx.lineTo((len / 2 - 1.8) * d, y - 1.4);
-      ctx.moveTo((len / 2) * d, y);
-      ctx.lineTo((len / 2 - 1.8) * d, y + 1.4);
+      ctx.roundRect(o.x * k, o.y * k, o.w * k, o.h * k, 4 * dpr);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      if (o.kind === "sofa") {
+        ctx.rect(o.x * k, o.y * k, o.w * k, 0.2 * k);
+        for (let i = 1; i < 3; i++) {
+          const x = (o.x + (o.w * i) / 3) * k;
+          ctx.moveTo(x, 0.2 * k);
+          ctx.lineTo(x, (o.y + o.h) * k);
+        }
+      } else if (o.kind === "chair") {
+        ctx.rect(o.x * k, o.y * k, o.w * k, 0.18 * k);
+      } else {
+        ctx.moveTo(o.x * k, (o.y + o.h / 2) * k);
+        ctx.lineTo((o.x + o.w) * k, (o.y + o.h / 2) * k);
+      }
       ctx.stroke();
     }
+    for (const c of CIRCLES) {
+      ctx.beginPath();
+      ctx.arc(c.x * k, c.y * k, c.r * k, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      if (c.kind === "plant") {
+        ctx.beginPath();
+        ctx.arc(c.x * k, c.y * k, c.r * 0.55 * k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
-    // Shell.
+    // Walls.
+    ctx.lineWidth = 4 * dpr;
+    ctx.strokeRect(2 * dpr, 2 * dpr, canvas.width - 4 * dpr, canvas.height - 4 * dpr);
+
+    drawRobot(k);
+  }
+
+  function drawRobot(k) {
+    const near = distanceCm < STOP_CM;
+    const buzzing = s && s.horn && s.duty[0] > 0;
+    const jx = buzzing ? (Math.random() - 0.5) * 1.6 * dpr : 0;
+
+    ctx.save();
+    ctx.translate(robot.x * k + jx, robot.y * k);
+    ctx.rotate(robot.th);
+    const r = ROBOT_R * k;
+
+    // Sonar cone out to what the sensor measures (drawn up to 1.2 m).
+    const reach = (Math.min(distanceCm, 120) / 100) * k;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(r + reach * Math.cos(0.13), reach * Math.sin(0.13));
+    ctx.lineTo(r + reach * Math.cos(0.13), -reach * Math.sin(0.13));
+    ctx.closePath();
+    ctx.fillStyle = near ? "rgba(235, 108, 54, 0.45)" : "rgba(79, 93, 117, 0.13)";
+    ctx.fill();
+
+    // Body with a soft offset shadow.
     ctx.shadowColor = "rgba(45, 49, 66, 0.3)";
-    ctx.shadowBlur = 2.5 * k;
-    ctx.shadowOffsetY = 0.8 * k;
+    ctx.shadowBlur = 8 * dpr;
+    ctx.shadowOffsetY = 3 * dpr;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fillStyle = "#23262f";
     ctx.fill();
     ctx.shadowColor = "transparent";
+    ctx.lineWidth = dpr;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.93, 0, Math.PI * 2);
+    ctx.stroke();
 
-    // Wheels under the shell, shown as an x-ray with moving treads.
-    for (const i of [0, 1]) {
-      const y = i === 0 ? -13 : 13;
-      const held = s && s.held[i];
-      ctx.fillStyle = "#3b4054";
-      ctx.fillRect(-3.3, y - 1.3, 6.6, 2.6);
-      const offset = s ? (((s.turns[i] * 20.7) % 1.6) + 1.6) % 1.6 : 0;
-      ctx.strokeStyle = "#6b7285";
-      ctx.lineWidth = 0.3;
-      ctx.beginPath();
-      for (let x = -3.3 + offset; x < 3.3; x += 1.6) {
-        ctx.moveTo(x, y - 1.3);
-        ctx.lineTo(x, y + 1.3);
-      }
-      ctx.stroke();
-      ctx.strokeStyle = held ? "#eb6c36" : "#8a91a0";
-      ctx.lineWidth = held ? 0.6 : 0.25;
-      ctx.setLineDash(held ? [] : [0.8, 0.6]);
-      ctx.strokeRect(-3.3, y - 1.3, 6.6, 2.6);
-      ctx.setLineDash([]);
-    }
-
-    // Filter, with the fan turning under it.
-    const f = 11;
+    // Filter grille on the lid, with the fan turning under it.
+    const f = r * 0.62;
     ctx.fillStyle = "#b9bec8";
     ctx.fillRect(-f / 2, -f / 2, f, f);
     if (s && s.fan) {
       const a = performance.now() / 90;
       ctx.strokeStyle = "rgba(45, 49, 66, 0.35)";
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 1.5 * dpr;
       ctx.beginPath();
       for (let b = 0; b < 5; b++) {
         const t = a + (b * Math.PI * 2) / 5;
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(t) * 4.6, Math.sin(t) * 4.6);
+        ctx.lineTo(Math.cos(t) * f * 0.42, Math.sin(t) * f * 0.42);
       }
       ctx.stroke();
     }
     ctx.strokeStyle = "#868d9c";
-    ctx.lineWidth = 0.2;
+    ctx.lineWidth = dpr;
     ctx.beginPath();
-    for (let i = 1; i < 10; i++) {
-      const x = -f / 2 + (f * i) / 10;
+    for (let i = 1; i < 8; i++) {
+      const x = -f / 2 + (f * i) / 8;
       ctx.moveTo(x, -f / 2);
       ctx.lineTo(x, f / 2);
     }
     ctx.stroke();
 
-    // Green status LED in front of the filter, start button behind it.
+    // Green status LED at the front, start button at the back.
     ctx.beginPath();
-    ctx.arc(f / 2 + 2.2, 0, 1.2, 0, Math.PI * 2);
+    ctx.arc(f / 2 + r * 0.12, 0, r * 0.07, 0, Math.PI * 2);
     ctx.fillStyle = s && s.led ? "#46e07a" : "#2d4a37";
     if (s && s.led) {
-      ctx.shadowColor = "rgba(70, 224, 122, 0.9)";
-      ctx.shadowBlur = 3 * k;
+      ctx.shadowColor = "rgba(70, 224, 122, 0.8)";
+      ctx.shadowBlur = 10 * dpr;
       ctx.shadowOffsetY = 0;
     }
     ctx.fill();
     ctx.shadowColor = "transparent";
     ctx.beginPath();
-    ctx.arc(geo.buttonX - cx, 0, 1.6, 0, Math.PI * 2);
+    ctx.arc(-f / 2 - r * 0.12, 0, r * 0.05, 0, Math.PI * 2);
     ctx.fillStyle = "#2fae5a";
     ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 0.25;
-    ctx.stroke();
 
-    // Ultrasonic sensor at the front edge.
+    // Ultrasonic sensor on the front edge.
     ctx.fillStyle = "#c9ccd3";
-    for (const y of [-2.8, 2.8]) {
+    for (const y of [-r * 0.16, r * 0.16]) {
       ctx.beginPath();
-      ctx.arc(r - 1.6, y, 1.6, 0, Math.PI * 2);
+      ctx.arc(r * 0.9, y, r * 0.09, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -428,18 +516,18 @@
 
   function plainStatus() {
     if (!s.connected) return "Phone disconnected, so the firmware stopped the robot. Press Connect to link again.";
-    if (s.blocked && s.horn) return "Something is closer than 15 cm, so it refuses to drive forward and honks. Move the box, or turn.";
-    if (s.blocked) return "Still blocked. Turn, reverse, or move the box away.";
+    if (s.blocked && s.horn) return "Something is closer than 15 cm, so it refuses to drive forward and honks. Turn or reverse.";
+    if (s.blocked) return "Still blocked. Turn or reverse away from the obstacle.";
     if (s.horn) return "Honking: the motors buzz at low power. Press Honk again to stop.";
     if (s.autonomous) {
       const reversing = !s.forward[0] && !s.forward[1] && s.speed[0] + s.speed[1] > 2;
       if (s.state === "STALL_TURN" || (s.state === "FWD" && reversing)) {
-        return "A wheel stopped turning for 800 ms, so it reverses and turns away.";
+        return "A wheel stopped turning for 800 ms, so it backs up and turns away.";
       }
       if (s.state === "AVOID" || s.state === "START_AVOID") {
-        return "Something within 15 cm: turning left for 39 wheel pulses. On a stand it can't get away, so it turns again until you move the box.";
+        return "Something within 15 cm: turning left for 39 wheel pulses, then carrying on.";
       }
-      return "Cleaning on its own: driving straight until something is within 15 cm. Press Stop cleaning to drive it yourself.";
+      return "Cleaning on its own: straight ahead until something is within 15 cm. Press Stop cleaning to drive it yourself.";
     }
     if (s.manual === "FORWARD") return "Driving forward, with the PID keeping both wheels level. Press Drive again to brake.";
     if (s.manual === "BACKWARD") return "Reversing. Press Reverse again to brake.";
@@ -459,6 +547,8 @@
       lastStatus = status;
     }
     ui.state.textContent = s.blocked ? "BLOCKED" : s.manual || s.state;
+    ui.sonar.textContent = distanceCm >= 999 ? "no echo" : `${Math.round(distanceCm)} cm`;
+    ui.sonar.classList.toggle("is-near", distanceCm < STOP_CM);
     ui.power.textContent = `${s.duty[0]} / ${s.duty[1]} %`;
     ui.pulses.textContent = `${s.pulses[0]} / ${s.pulses[1]}`;
     ui.led.textContent = s.ledPattern.replace("_", " ").toLowerCase();
@@ -489,9 +579,10 @@
   }
 
   // ---------------------------------------------------------------
-  // Loop: runs only while the stand is on screen and the tab is visible.
+  // Loop: runs only while the room is on screen and the tab is visible.
   // ---------------------------------------------------------------
   let running = false;
+  let raf = 0;
   let visible = false;
   let last = 0;
   let frames = 0;
@@ -501,24 +592,31 @@
     const ms = Math.min(Math.max(t - last, 0), 100);
     last = t;
     if (bench && ms >= 1) {
+      distanceCm = measureDistance();
+      bench.set_distance(distanceCm >= 999 ? null : distanceCm);
+      const stuck = pushingAgainstFurniture();
+      bench.hold_wheel(0, stuck);
+      bench.hold_wheel(1, stuck);
       bench.step(Math.round(ms));
       read();
+      moveRobot();
     }
     draw();
     frames += 1;
     if (frames % 4 === 0 || pendingNote) updateUi();
-    requestAnimationFrame(frame);
+    raf = requestAnimationFrame(frame);
   }
 
   function wake() {
     if (running || !visible || document.hidden) return;
     running = true;
     last = performance.now();
-    requestAnimationFrame(frame);
+    raf = requestAnimationFrame(frame);
   }
 
   function pause() {
     running = false;
+    cancelAnimationFrame(raf); // a pending frame would start a second loop
     audio.set(0);
   }
 
@@ -531,6 +629,6 @@
   new ResizeObserver(resize).observe(canvas);
 
   controls.forEach((c) => (c.disabled = true));
-  setDistance(distance);
+  resetRoom();
   start();
 })();

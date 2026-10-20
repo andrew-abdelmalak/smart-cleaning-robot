@@ -238,7 +238,7 @@ h1 {
   font-weight: 600;
 }
 
-/* Remote: the test stand plus the phone pad */
+/* Remote: the drawn room plus the phone pad */
 
 .remote {
   display: grid;
@@ -246,19 +246,18 @@ h1 {
   min-width: 0;
 }
 
-.stand {
+.room {
   position: relative;
 }
 
-.stand canvas {
+.room canvas {
   width: 100%;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 16 / 9;
   border-radius: 14px;
   box-shadow: 0 1px 2px rgb(45 49 66 / 0.08), 0 8px 24px -12px rgb(45 49 66 / 0.25);
-  touch-action: pan-y;
 }
 
-.stand-tag {
+.room-tag {
   position: absolute;
   left: 12px;
   top: 12px;
@@ -272,7 +271,7 @@ h1 {
   line-height: 1.4;
 }
 
-.stand-tag span {
+.room-tag span {
   display: inline-block;
   margin-right: 4px;
   padding: 1px 6px;
@@ -284,48 +283,21 @@ h1 {
   text-transform: uppercase;
 }
 
-.stand-loading {
+.room-loading {
   position: absolute;
   inset: auto 12px 12px;
   margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgb(245 245 245 / 0.92);
   color: var(--muted);
   font-size: 0.875rem;
 }
 
-.stand-controls {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px 16px;
-}
-
-.distance {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-
-.distance output {
-  min-width: 4.5ch;
-  color: var(--ink);
-  font: 500 0.875rem var(--mono);
-  font-variant-numeric: tabular-nums;
-}
-
-input[type="range"] {
-  width: 100%;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: ew-resize;
-}
-
-.stand-buttons {
+.room-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  grid-column: 1 / -1;
 }
 
 .chip {
@@ -578,13 +550,6 @@ input[type="range"] {
     margin-left: calc(41.67% + 16px);
   }
 
-  .stand-controls {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .stand-buttons {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 640px) {
@@ -602,14 +567,10 @@ input[type="range"] {
     grid-auto-rows: 84px;
   }
 
-  .stand-tag {
+  .room-tag {
     left: 8px;
     top: 8px;
     font-size: 0.6875rem;
-  }
-
-  .stand-controls {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Phone: the clip sits beside the three numbers. */

@@ -1,13 +1,15 @@
-"""Simulated test stand for the real firmware.
+"""Simulated hardware for the real firmware on the project site.
 
 bench.js loads MicroPython (WebAssembly) in the browser, copies
 firmware/main.py into its file system, and runs this file. Every hardware
 module the firmware imports is replaced by a fake, as in tests/conftest.py;
 the firmware itself runs unchanged.
 
-The robot sits on a stand with its wheels in the air. Each wheel turns at
-the speed the firmware's own feed-forward model predicts for its PWM duty,
-and every encoder pulse goes through the firmware's interrupt handler.
+Each wheel turns at the speed the firmware's own feed-forward model
+predicts for its PWM duty, scaled by a floor-load factor, and every encoder
+pulse goes through the firmware's interrupt handler. bench.js moves the
+robot through a drawn room from the wheel turns and feeds the ultrasonic
+reading and collisions back in.
 """
 
 import binascii
@@ -201,8 +203,8 @@ fw.trig = fw.echo = sonar
 
 
 class Bench:
-    """The stand: phone link, wheels, the lid button, and an object in
-    front of the ultrasonic sensor."""
+    """The hardware around the firmware: phone link, wheels, the lid
+    button, and the distance the ultrasonic sensor sees."""
 
     def __init__(self) -> None:
         self.radio = BLE()
@@ -212,6 +214,8 @@ class Bench:
         self.turns = [0.0, 0.0]  # wheel revolutions, signed
         self.partial = [0.0, 0.0]
         self.held = [False, False]
+        self.load = 1.0  # floor speed as a fraction of free-wheel speed
+        self.target_us = clock.us
         self.button_release_us = None
         clock.on_sleep = self.run_motors
         self.connect()
@@ -238,6 +242,9 @@ class Bench:
 
     def set_distance(self, cm: float | None) -> None:
         sonar.distance_cm = None if cm is None else float(cm)
+
+    def set_load(self, fraction: float) -> None:
+        self.load = float(fraction)
 
     # Motors --------------------------------------------------------------
 
@@ -266,7 +273,7 @@ class Bench:
                 if self.held[i]:
                     self.speed[i] = 0.0
                     continue
-                target = self._target_pps(i)
+                target = self._target_pps(i) * self.load
                 self.speed[i] += (target - self.speed[i]) * min(1.0, dt / MOTOR_LAG_MS)
                 pulses = self.speed[i] * dt / 1000
                 sign = 1 if self.forward[i] else -1
@@ -279,9 +286,14 @@ class Bench:
     # Loop ----------------------------------------------------------------
 
     def step(self, ms: int) -> None:
-        """Run the firmware's control loop for at least ms of simulated time."""
-        end = clock.us + ms * 1000
-        while clock.us < end:
+        """Run the firmware's control loop for ms more of simulated time.
+
+        A loop pass takes 20 ms plus the sonar echo time, so a single call
+        can overshoot; the target carries over so the simulated clock keeps
+        pace with real time.
+        """
+        self.target_us += ms * 1000
+        while clock.us < self.target_us:
             fw.control_step()
 
     def state(self) -> str:

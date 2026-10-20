@@ -1,7 +1,7 @@
-"""Tests for the website's test stand, site/bench.py.
+"""Tests for the site's simulated hardware, site/bench.py.
 
-The stand runs the real firmware with fake hardware in the browser. These
-tests load it under CPython and check that the firmware reacts on the stand
+The site runs the real firmware with this fake hardware in the browser.
+These tests load it under CPython and check that the firmware reacts
 as it does in the other tests: it cleans, avoids, recovers from a stall,
 and stops when the phone disconnects.
 """
