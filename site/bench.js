@@ -26,7 +26,7 @@
   const ROOM_W = 4.2;
   const ROOM_H = 2.3625;
   const RECTS = [
-    { x: 0.3, y: 0, w: 1.66, h: 0.74, kind: "sofa" },
+    { x: 0.15, y: 0, w: 1.5, h: 0.74, kind: "sofa" },
     { x: 2.85, y: 0, w: 0.66, h: 0.63, kind: "chair" },
     { x: 3.72, y: 0.87, w: 0.48, h: 1.05, kind: "cabinet" },
   ];

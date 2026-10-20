@@ -660,6 +660,7 @@ h1 {
 
 /* Sections */
 
+.film,
 .footage,
 .build,
 .story,
@@ -689,6 +690,20 @@ figure {
 figcaption {
   color: var(--muted);
   font-size: 0.9375rem;
+}
+
+.film video {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  background: var(--ink);
+  box-shadow: 0 1px 2px rgb(45 49 66 / 0.08), 0 16px 40px -20px rgb(45 49 66 / 0.35);
+}
+
+.film figcaption {
+  margin-top: 10px;
+  font-size: 0.8125rem;
 }
 
 .footage-grid {
