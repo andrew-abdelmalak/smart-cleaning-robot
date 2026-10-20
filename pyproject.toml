@@ -15,9 +15,17 @@ dev = [
     "pytest>=9.1",
     "ruff>=0.16",
 ]
+search = [
+    "huggingface-hub>=1.33.0",
+    "numpy>=2.5.3",
+    "onnxruntime>=1.30.0",
+    "tokenizers>=0.23.2",
+]
 
 [tool.uv]
 package = false
+# Resolve only releases at least two weeks old when the lock was made.
+exclude-newer = "2026-10-05T00:00:00Z"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
