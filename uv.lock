@@ -426,6 +426,7 @@ source = { virtual = "." }
 [package.dev-dependencies]
 dev = [
     { name = "mpy-cross" },
+    { name = "numpy" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -441,6 +442,7 @@ search = [
 [package.metadata.requires-dev]
 dev = [
     { name = "mpy-cross", specifier = ">=1.29" },
+    { name = "numpy", specifier = ">=2.5.3" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "ruff", specifier = ">=0.16" },
 ]

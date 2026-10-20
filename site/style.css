@@ -998,6 +998,150 @@ figcaption {
   background: #3b4054;
 }
 
+/* Ask the thesis */
+
+.ask {
+  max-width: 76ch;
+  margin-top: clamp(48px, 6vw, 72px);
+  padding-top: clamp(32px, 4vw, 48px);
+  border-top: 1px solid var(--rule);
+}
+
+.ask h3 {
+  margin: 0 0 8px;
+  font: 400 clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem) / 1.1 var(--serif);
+  letter-spacing: -0.01em;
+}
+
+.ask-note {
+  max-width: 64ch;
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+
+.ask-form label {
+  display: block;
+  margin-bottom: 8px;
+  font: 500 0.8125rem var(--mono);
+  color: var(--muted);
+}
+
+.ask-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ask-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 120ms ease-out;
+}
+
+.ask-row input::placeholder {
+  color: var(--muted);
+}
+
+.ask-row input:hover,
+.ask-row input:focus {
+  border-color: var(--muted);
+}
+
+.ask-row button {
+  padding: 14px 22px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 1rem var(--sans);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.ask-row button:hover {
+  background: #3b4054;
+}
+
+.ask-try {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ask-try span {
+  margin-right: 4px;
+  color: var(--muted);
+  font: 500 0.8125rem var(--mono);
+}
+
+.ask-try button {
+  padding: 7px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 0.875rem var(--sans);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.ask-try button:hover {
+  border-color: var(--muted);
+  background: var(--paper-2);
+}
+
+.ask-status {
+  min-height: 1.6em;
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.ask-results {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-results li {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ask-results li:first-child {
+  border-top: 1px solid var(--rule);
+}
+
+.ask-where {
+  margin: 0 0 8px;
+  font: 500 0.8125rem/1.4 var(--mono);
+  color: var(--muted);
+}
+
+.ask-text {
+  margin: 0 0 10px;
+}
+
+.ask-results a {
+  font: 500 0.875rem var(--mono);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .ask-row {
+    flex-direction: column;
+  }
+}
+
 /* Footer */
 
 .foot {

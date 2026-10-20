@@ -144,13 +144,24 @@ uv run mpy-cross -o main.mpy firmware/main.py
 
 CI runs the same steps on every push and pull request.
 
+The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. To rebuild that index after the thesis changes, install poppler's `pdftotext` and run:
+
+```bash
+uv sync --group search
+uv run scripts/build_thesis_index.py
+uv run pytest tests/test_thesis_index.py
+```
+
+With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When the index was built, 17 of the 21 did. CI skips that check because it needs a 23 MB model download.
+
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)
+scripts/              Builds the thesis search index for the site
 tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
 docs/media/           Demo clips from the thesis presentation and the project video
 docs/thesis/          Thesis PDF and its LaTeX source
-site/                 Project site; runs the firmware in the browser in a drawn room
+site/                 Project site: the firmware in a drawn room, and thesis search
 ```
 
 ## Known limitations
@@ -171,6 +182,7 @@ These come from the hardware and the hand tuning, and need the robot to fix and 
 
 - [Thesis PDF](docs/thesis/thesis.pdf)
 - [LaTeX source](docs/thesis/main.tex), also on [Overleaf (read only)](https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f)
+- [Ask the thesis](https://andrew-abdelmalak.github.io/smart-cleaning-robot/#thesis): semantic search over the thesis on the project site, which links each result to its page in the PDF
 
 The firmware has changed since the thesis: it now has tests, CI, and fixes for five control-logic bugs. See [CHANGELOG.md](CHANGELOG.md).
 
