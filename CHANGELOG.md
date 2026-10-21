@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The site's drawn room is a new 4.8 m by 2.7 m living room, chosen by running the firmware in thousands of realistic layouts. Averaged over runs with slightly different timing, it cleans about 41 % of the floor in 2 minutes and 65 % in 5, with fewer stalls and less driving over cleaned floor than before.
+- The simulated ultrasonic sensor covers the HC-SR04's 30-degree measuring angle from its datasheet, not 15 degrees, so it sees walls the robot approaches at a shallow angle.
+- The cleaning score counts the floor the nozzle can reach, so it can reach 100 %, and sits beside the room's buttons instead of over the drawing.
+
+### Added
+
+- A "4× speed" button runs the room's clock four times faster. It is off by default; the firmware and physics are the same.
+
 ## [1.1.1] - 2026-10-21
 
 Fixes and hardening for the project site and its simulated hardware, found by code, security, and accessibility reviews. The firmware, its BLE commands, pins, and tuned constants are unchanged.

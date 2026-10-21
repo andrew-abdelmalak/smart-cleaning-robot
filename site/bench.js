@@ -22,18 +22,20 @@
   const FLOOR_LOAD = 0.27;
   const NOZZLE_R = 0.1;
 
-  // Room, 4.2 m by 2.36 m, with simple furniture.
-  const ROOM_W = 4.2;
-  const ROOM_H = 2.3625;
+  // A 4.8 m by 2.7 m living room. The layout and start were chosen by
+  // running the firmware in thousands of realistic rooms and keeping the
+  // one with the most floor cleaned, the least driving over cleaned floor,
+  // and the fewest stalls, averaged over runs with slightly different
+  // timing. Furniture is flush with a wall or leaves room for the robot.
+  const ROOM_W = 4.8;
+  const ROOM_H = 2.7;
   const RECTS = [
-    { x: 0.15, y: 0, w: 1.5, h: 0.74, kind: "sofa" },
-    { x: 2.85, y: 0, w: 0.66, h: 0.63, kind: "chair" },
-    { x: 3.72, y: 0.87, w: 0.48, h: 1.05, kind: "cabinet" },
+    { x: 3.0, y: 1.8, w: 1.8, h: 0.9, kind: "sofa" },
+    { x: 3.24, y: 0.76, w: 0.96, h: 0.5, kind: "table" },
+    { x: 0, y: 0, w: 0.8, h: 0.8, kind: "chair" },
   ];
-  const CIRCLES = [
-    { x: 2.58, y: 1.53, r: 0.32, kind: "table" },
-    { x: 0.28, y: 2.08, r: 0.19, kind: "plant" },
-  ];
+  const CIRCLES = [{ x: 4.65, y: 0.15, r: 0.15, kind: "plant" }];
+  const START = { x: 0.76, y: 1.59, th: 0 };
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("room");
@@ -54,11 +56,15 @@
     sound: $("bench-sound"),
     lid: $("lid-button"),
     reset: $("room-reset"),
+    speed: $("room-speed"),
     caption: $("room-caption"),
     score: $("room-score"),
     keys: [...document.querySelectorAll(".key[data-cmd]")],
   };
-  const controls = [ui.link, ui.lid, ui.reset, ...ui.keys];
+  const controls = [ui.link, ui.lid, ui.reset, ui.speed, ...ui.keys];
+  // Fast-forward: the simulated clock runs this many times faster than real
+  // time. The firmware and the physics are the same; only the clock changes.
+  let timeScale = 1;
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let loadBench = null; // imports bench.py again for a freshly booted robot
@@ -139,27 +145,44 @@
     return best;
   }
 
-  // What the HC-SR04 sees: three rays across a 15-degree cone from the front
-  // edge. Past its 4 m range there is no echo, which the firmware reads as 999.
+  // What the HC-SR04 sees: five rays across its 30-degree measuring angle
+  // (datasheet) from the front edge. Past its 4 m range there is no echo,
+  // which the firmware reads as 999.
   function measureDistance() {
     const sx = robot.x + Math.cos(robot.th) * ROBOT_R;
     const sy = robot.y + Math.sin(robot.th) * ROBOT_R;
     let d = Infinity;
-    for (const a of [-0.13, 0, 0.13]) {
+    for (const a of [-0.26, -0.13, 0, 0.13, 0.26]) {
       d = Math.min(d, castRay(sx, sy, Math.cos(robot.th + a), Math.sin(robot.th + a)));
     }
     return d > 4 ? 999 : d * 100;
   }
 
+  // True when the nozzle can pass over (x, y): some robot position that fits
+  // in the room lies within NOZZLE_R of it. The thin strips along the walls
+  // and furniture that no robot this size can reach get no dust, so the
+  // score counts the floor it could clean.
+  function nozzleReaches(x, y) {
+    if (!collides(x, y)) return true;
+    for (const rr of [0.05, 0.095]) {
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        if (!collides(x + rr * Math.cos(a), y + rr * Math.sin(a))) return true;
+      }
+    }
+    return false;
+  }
+
   function resetRoom() {
-    robot = { x: 1.0, y: 1.6, th: 0, turns: [0, 0] };
+    robot = { ...START, turns: [0, 0] };
     distanceCm = measureDistance();
     const rand = seededRandom(7);
     dust = [];
     while (dust.length < 2200) {
       const x = rand() * ROOM_W;
       const y = rand() * ROOM_H;
-      if (!hitsFurniture(x, y, 0.02)) dust.push({ x, y, s: 0.6 + rand() * 0.9 });
+      const s = 0.6 + rand() * 0.9;
+      if (!hitsFurniture(x, y, 0.02) && nozzleReaches(x, y)) dust.push({ x, y, s });
     }
     dustTotal = dust.length;
     trailPoints = [];
@@ -366,6 +389,12 @@
     wake(); // restarts the loop if an error stopped it
   });
 
+  ui.speed.addEventListener("click", () => {
+    timeScale = timeScale === 1 ? 4 : 1;
+    ui.speed.setAttribute("aria-pressed", String(timeScale > 1));
+    log(timeScale > 1 ? "Running at 4× speed" : "Running at real speed", "event");
+  });
+
   ui.link.addEventListener("click", () => {
     if (s.connected) bench.disconnect();
     else bench.connect();
@@ -455,15 +484,24 @@
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      if (o.kind === "sofa") {
-        ctx.rect(o.x * k, o.y * k, o.w * k, 0.2 * k);
-        for (let i = 1; i < 3; i++) {
-          const x = (o.x + (o.w * i) / 3) * k;
-          ctx.moveTo(x, 0.2 * k);
-          ctx.lineTo(x, (o.y + o.h) * k);
+      if (o.kind === "sofa" || o.kind === "chair") {
+        // Backrest along the wall the seat stands against; a sofa also
+        // shows its seat cushions.
+        const back = o.kind === "sofa" ? 0.2 : 0.18;
+        const onBottom = o.y + o.h >= ROOM_H - 0.01;
+        const by = onBottom ? o.y + o.h - back : o.y;
+        ctx.rect(o.x * k, by * k, o.w * k, back * k);
+        if (o.kind === "sofa") {
+          const y0 = onBottom ? o.y : o.y + back;
+          for (let i = 1; i < 3; i++) {
+            const x = (o.x + (o.w * i) / 3) * k;
+            ctx.moveTo(x, y0 * k);
+            ctx.lineTo(x, (y0 + o.h - back) * k);
+          }
         }
-      } else if (o.kind === "chair") {
-        ctx.rect(o.x * k, o.y * k, o.w * k, 0.18 * k);
+      } else if (o.kind === "table") {
+        const inset = 0.06;
+        ctx.rect((o.x + inset) * k, (o.y + inset) * k, (o.w - 2 * inset) * k, (o.h - 2 * inset) * k);
       } else {
         ctx.moveTo(o.x * k, (o.y + o.h / 2) * k);
         ctx.lineTo((o.x + o.w) * k, (o.y + o.h / 2) * k);
@@ -503,8 +541,8 @@
     const reach = (Math.min(distanceCm, 120) / 100) * k;
     ctx.beginPath();
     ctx.moveTo(r, 0);
-    ctx.lineTo(r + reach * Math.cos(0.13), reach * Math.sin(0.13));
-    ctx.lineTo(r + reach * Math.cos(0.13), -reach * Math.sin(0.13));
+    ctx.lineTo(r + reach * Math.cos(0.26), reach * Math.sin(0.26));
+    ctx.lineTo(r + reach * Math.cos(0.26), -reach * Math.sin(0.26));
     ctx.closePath();
     ctx.fillStyle = near ? "rgba(235, 108, 54, 0.45)" : "rgba(79, 93, 117, 0.13)";
     ctx.fill();
@@ -673,7 +711,7 @@
         const stuck = pushingAgainstFurniture();
         bench.hold_wheel(0, stuck);
         bench.hold_wheel(1, stuck);
-        bench.step(ms);
+        bench.step(ms * timeScale);
         read();
         moveRobot();
         captionEvents();
