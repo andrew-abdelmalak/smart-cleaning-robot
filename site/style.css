@@ -35,6 +35,9 @@
   --muted: #4f5d75;
   --accent: #eb6c36;
   --accent-tint: #fbd9c8;
+  /* Focus rings: tangerine deep enough for 3:1 on paper (WCAG 1.4.11), ember on the slab. */
+  --focus: #c9561f;
+  --ember: #ff9a6b;
   --slab: #2d3142;
   --key: #3b4054;
   --key-hover: #464c62;
@@ -96,9 +99,13 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+.console :focus-visible {
+  outline-color: var(--ember);
 }
 
 h1,
@@ -450,7 +457,7 @@ h1 {
 .key[aria-pressed="true"],
 .key.is-on {
   background: var(--key-hover);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--ember);
 }
 
 .key[aria-pressed="true"] svg,

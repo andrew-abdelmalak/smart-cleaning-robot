@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-21
+
+A new drawn room on the project site, a speed control, and a re-recorded project video. The firmware is unchanged.
+
 ### Changed
 
 - The site's drawn room is a new 4.8 m by 2.7 m living room, chosen by running the firmware in thousands of realistic layouts. Averaged over runs with slightly different timing, it cleans about 41 % of the floor in 2 minutes and 65 % in 5, with fewer stalls and less driving over cleaned floor than before.
@@ -13,6 +17,11 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - A "4× speed" button runs the room's clock four times faster. It is off by default; the firmware and physics are the same.
+- The project video shows the new room, and plays muted and looping when it scrolls into view, like the site's other clips. The README shows a silent animated preview that links to the version with sound.
+
+### Fixed
+
+- Focus rings had less than 3:1 contrast against the page and the remote's keys (WCAG 2.2, 1.4.11). They now use a deeper tangerine on light surfaces and the lighter ember inside the remote.
 
 ## [1.1.1] - 2026-10-21
 
@@ -77,7 +86,8 @@ The firmware as submitted with the bachelor thesis (June 2025), published on Git
 - MicroPython firmware for the Raspberry Pi Pico W: BLE remote control, ultrasonic obstacle avoidance, wheel-encoder odometry, and feed-forward plus PID motion control.
 - Thesis PDF, README, a lint workflow, and the MIT license.
 
-[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/releases/tag/v1.0.0
