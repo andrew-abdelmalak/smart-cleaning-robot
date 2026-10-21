@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- In the project video, the camera now moves from the remote to the robot while it honks, so the honk is on screen.
+
 ## [1.2.0] - 2026-10-21
 
 A new drawn room on the project site, a speed control, and a re-recorded project video. The firmware is unchanged.
