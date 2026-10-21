@@ -74,9 +74,8 @@
 
       <div class="remote" id="remote">
         <div class="room">
-          <canvas id="room" role="img" aria-label="Top-down drawing of a room: a round black robot on a wooden floor with a sofa, an armchair, a cabinet, a round table, and a plant. Dust specks disappear and the floor lightens where it cleans."></canvas>
+          <canvas id="room" role="img" aria-label="Top-down drawing of a living room: a round black robot on a wooden floor with a sofa, a coffee table, an armchair, and a plant. Dust specks disappear and the floor lightens where it cleans."></canvas>
           <p class="room-tag"><span>Real firmware</span> Drawn room</p>
-          <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0 %</span></p>
           <p class="room-caption" id="room-caption" aria-hidden="true"></p>
           <p class="room-loading" id="bench-loading">Starting the firmware in your browser…</p>
         </div>
@@ -84,6 +83,8 @@
         <div class="room-controls">
           <button class="chip" id="lid-button" type="button">Press the lid button</button>
           <button class="chip" id="room-reset" type="button">Reset room</button>
+          <button class="chip" id="room-speed" type="button" aria-pressed="false">4× speed</button>
+          <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0 %</span></p>
         </div>
 
         <div class="console">
