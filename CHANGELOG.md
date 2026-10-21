@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-21
+
+Fixes and hardening for the project site and its simulated hardware, found by code, security, and accessibility reviews. The firmware, its BLE commands, pins, and tuned constants are unchanged.
+
+### Fixed
+
+- On a phone, the remote kept working only while the drawn room was on screen. It now works whenever the remote is visible (#8).
+- In the simulation, the wheels stood still while the firmware waited for the sonar echo, so the robot drove up to half as fast on open floor. Its pace is now the same at any distance (#8).
+- Holding an arrow key toggled between driving and braking (#8).
+- The log could call a command "ignored" before the firmware had read it (#8).
+- The room no longer freezes silently on an error; it says so, and Reset room restarts it (#8).
+- "Ask the thesis" lost keyboard focus when results re-ranked, announced download progress too often for screen readers, and could fetch its index twice (#8).
+- The hero clip had no pause control, a clip paused by the visitor restarted when scrolled back into view, and the page scrolled sideways at 320 px (#8).
+- The thesis search index dropped short passage tails, including the bill of materials' grand total (#8).
+
+### Changed
+
+- The site serves MicroPython WebAssembly, transformers.js, the ONNX runtime, and its fonts itself instead of loading them from CDNs and Google Fonts. Each library file is pinned by SHA-256 from its npm package (#8, #9).
+- Dependabot proposes monthly, grouped updates for GitHub Actions, uv, and the site's browser libraries, each at least 14 days after release (#6, #7, #9).
+- uv resolves only releases at least 14 days old, on a rolling window (#6).
+
+### Security
+
+- A Content Security Policy limits the site's scripts, styles, and fonts to its own origin; the language model's files are the only outside requests (#8).
+- The thesis CI build runs LaTeX with shell escape disabled (#8).
+
 ## [1.1.0] - 2026-10-20
 
 The firmware now has host-side tests, CI, and fixes for five control-logic bugs, and the project has a site where its real firmware runs in the browser. The BLE commands, pins, and tuned constants are unchanged.
@@ -41,6 +67,7 @@ The firmware as submitted with the bachelor thesis (June 2025), published on Git
 - MicroPython firmware for the Raspberry Pi Pico W: BLE remote control, ultrasonic obstacle avoidance, wheel-encoder odometry, and feed-forward plus PID motion control.
 - Thesis PDF, README, a lint workflow, and the MIT license.
 
-[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/releases/tag/v1.0.0
