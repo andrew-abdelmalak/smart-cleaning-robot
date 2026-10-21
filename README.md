@@ -144,7 +144,13 @@ uv run mpy-cross -o main.mpy firmware/main.py
 
 CI runs the same steps on every push and pull request.
 
-The site serves its third-party browser code (MicroPython WebAssembly, transformers.js, and the ONNX runtime) itself, pinned by SHA-256 in `scripts/vendor.json`; Dependabot does not track these, so check them for updates by hand. To preview the site locally, fetch them into `site/vendor/` (ignored by git) and serve `site/`:
+The site serves its third-party browser code (MicroPython WebAssembly, transformers.js, and the ONNX runtime) itself. `package.json` lists the versions; nothing installs them. `scripts/vendor.json` pins each file by SHA-256, taken from the npm package tarball after checking the tarball against the registry. Dependabot proposes new versions in `package.json`, and CI then fails until the pins are refreshed on that branch:
+
+```bash
+python3 scripts/fetch_vendor.py --update
+```
+
+To preview the site locally, fetch the files into `site/vendor/` (ignored by git) and serve `site/`:
 
 ```bash
 python3 scripts/fetch_vendor.py site/vendor
@@ -162,7 +168,7 @@ With the `search` group installed, the tests also embed 21 sample questions and 
 
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)
-scripts/              Builds the thesis search index for the site
+scripts/              Builds the thesis search index; fetches the site's pinned libraries
 tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
 docs/media/           Demo clips from the thesis presentation and the project video

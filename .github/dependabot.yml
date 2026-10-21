@@ -1,6 +1,6 @@
-# Monthly, grouped dependency updates with a cooldown, so a new release has
-# time to be pulled or fixed before a pull request proposes it. Security
-# updates are not delayed by the cooldown.
+# Monthly, grouped dependency updates. Each waits 14 days after a release,
+# so a bad release has time to be pulled or fixed before a pull request
+# proposes it. Security updates are not delayed by the cooldown.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -11,7 +11,7 @@ updates:
       actions:
         patterns: ["*"]
     cooldown:
-      default-days: 7
+      default-days: 14
 
   # Host-side test and build tools (pyproject.toml and uv.lock).
   - package-ecosystem: uv
@@ -22,5 +22,18 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
     # Match exclude-newer in pyproject.toml, or uv refuses the update.
+    cooldown:
+      default-days: 14
+
+  # Browser libraries the site serves itself (package.json). Nothing is
+  # installed: after Dependabot bumps a version, CI fails until someone runs
+  # scripts/fetch_vendor.py --update on the branch and commits vendor.json.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      site:
+        patterns: ["*"]
     cooldown:
       default-days: 14

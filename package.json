@@ -1,0 +1,9 @@
+{
+  "name": "smart-cleaning-robot-site",
+  "private": true,
+  "description": "Versions of the browser libraries the project site serves itself. Nothing installs these: Dependabot reads them, and scripts/fetch_vendor.py --update pins their files in scripts/vendor.json.",
+  "dependencies": {
+    "@huggingface/transformers": "4.3.0",
+    "@micropython/micropython-webassembly-pyscript": "1.29.0-6"
+  }
+}
