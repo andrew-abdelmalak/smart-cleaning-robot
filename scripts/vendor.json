@@ -17,10 +17,10 @@
     },
     {
       "package": "@huggingface/transformers",
-      "version": "4.3.0",
+      "version": "4.3.1",
       "file": "dist/transformers.min.js",
       "path": "transformers/transformers.min.js",
-      "sha256": "1475fd440e9932ab206682ee42cb18f6097403e9ee77ea62084c592d0f83597d"
+      "sha256": "8d6716d9086f57c30a4bf367dba61b887593573c770c454465e8019b2703e743"
     },
     {
       "package": "onnxruntime-web",
