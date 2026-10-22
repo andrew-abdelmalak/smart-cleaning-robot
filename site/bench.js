@@ -11,7 +11,17 @@
   // Served by the site itself; scripts/vendor.json pins its version and hash.
   const MICROPYTHON = "./vendor/micropython/micropython.mjs";
   const MOVES = ["FORWARD", "BACKWARD", "LEFT", "RIGHT"];
-  const STOP_CM = 15; // OBSTACLE_THRESHOLD_CM in the firmware
+  // Copied from firmware/main.py for the page's text and the signal trace;
+  // tests/test_site.py checks that they still match.
+  const FW = {
+    OBSTACLE_THRESHOLD_CM: 15,
+    TURN_PULSES: 39,
+    STALL_TIME_MS: 800,
+    STALL_REVERSE_MS: 700,
+    BRAKE_DURATION_MS: 50,
+  };
+  const STOP_CM = FW.OBSTACLE_THRESHOLD_CM;
+  const TRACE_MS = 6000; // the signal trace shows this much firmware time
 
   // Robot geometry in metres: body and wheel from the thesis; the track
   // width is assumed. The floor load slows the wheels to about a third of
@@ -60,11 +70,18 @@
     caption: $("room-caption"),
     score: $("room-score"),
     keys: [...document.querySelectorAll(".key[data-cmd]")],
+    scope: $("scope"),
+    stepMode: $("step-mode"),
+    next: $("step-next"),
+    states: [...document.querySelectorAll(".fsm [data-state]")],
+    gears: [$("gear-left"), $("gear-right")],
+    motors: [$("motor-left"), $("motor-right")],
   };
-  const controls = [ui.link, ui.lid, ui.reset, ui.speed, ...ui.keys];
+  const controls = [ui.link, ui.lid, ui.reset, ui.speed, ui.stepMode, ui.next, ...ui.keys];
   // Fast-forward: the simulated clock runs this many times faster than real
   // time. The firmware and the physics are the same; only the clock changes.
   let timeScale = 1;
+  let stepMode = false; // the firmware runs one loop pass per press of ui.next
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let loadBench = null; // imports bench.py again for a freshly booted robot
@@ -257,7 +274,7 @@
   function captionEvents() {
     if (prev) {
       const reversing = (x) => x.autonomous && !x.forward[0] && !x.forward[1] && x.speed[0] + x.speed[1] > 2;
-      if (s.state === "AVOID" && prev.state !== "AVOID") caption("Obstacle 15 cm ahead: turning left");
+      if (s.state === "AVOID" && prev.state !== "AVOID") caption(`Obstacle ${STOP_CM} cm ahead: turning left`);
       else if (reversing(s) && !reversing(prev) && s.state === "FWD") caption("Wheel stuck: backing out");
       else if (s.blocked && !prev.blocked) caption("Too close to drive forward: honking");
       else if (s.horn && !prev.horn && !s.blocked) caption("Honk!");
@@ -315,6 +332,7 @@
         resetRoom();
         bench.set_distance(distanceCm);
         read();
+        clearTrace();
       };
       loadBench();
       ui.name.textContent = s.name;
@@ -357,6 +375,13 @@
       log(note ? `> ${command}  ${note}` : `> ${command}`, "cmd");
     };
     if (command === "HORN" || command === "FORWARD") audio.unlock();
+    if (stepMode) {
+      // The firmware reads the command on its next pass; until then only
+      // the latest one waits, as in last_ble_command.
+      log(`> ${command}  waiting for the next loop pass`, "cmd");
+      read();
+      updateUi();
+    }
     wake();
   }
 
@@ -367,6 +392,7 @@
     const cmd = ARROWS[e.key];
     // A held key repeats, and a repeated drive command means brake.
     if (!cmd || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target.matches("input") || e.target.closest(".scope-panel")) return;
     e.preventDefault();
     send(cmd);
   });
@@ -389,10 +415,33 @@
     wake(); // restarts the loop if an error stopped it
   });
 
-  ui.speed.addEventListener("click", () => {
-    timeScale = timeScale === 1 ? 4 : 1;
-    ui.speed.setAttribute("aria-pressed", String(timeScale > 1));
+  ui.speed.addEventListener("change", () => {
+    timeScale = ui.speed.checked ? 4 : 1;
     log(timeScale > 1 ? "Running at 4× speed" : "Running at real speed", "event");
+  });
+
+  ui.stepMode.addEventListener("change", () => {
+    stepMode = ui.stepMode.checked;
+    ui.next.hidden = !stepMode;
+    log(stepMode ? "Step by step: one control-loop pass per press" : "Running continuously", "event");
+    if (stepMode) {
+      pause();
+      updateUi();
+    } else {
+      wake();
+    }
+  });
+
+  ui.next.addEventListener("click", () => {
+    try {
+      const before = s.t;
+      advance(() => bench.step_once());
+      log(`One loop pass: ${s.t - before} ms of firmware time`, "event");
+      updateUi();
+      draw();
+    } catch (err) {
+      fail(err);
+    }
   });
 
   ui.link.addEventListener("click", () => {
@@ -427,9 +476,8 @@
     },
   };
 
-  ui.sound.addEventListener("click", () => {
-    audio.on = !audio.on;
-    ui.sound.setAttribute("aria-pressed", String(audio.on));
+  ui.sound.addEventListener("change", () => {
+    audio.on = ui.sound.checked;
     if (audio.on) audio.unlock();
     else audio.set(0);
   });
@@ -448,6 +496,7 @@
     scale = (w / ROOM_W) * dpr;
     paintTrail();
     draw();
+    drawScope();
   }
 
   function draw() {
@@ -615,24 +664,224 @@
   }
 
   // ---------------------------------------------------------------
+  // Signal trace: what the firmware wrote to the motor pins, the encoder
+  // pulses its interrupt handlers counted, the distance the sensor saw,
+  // and its state changes, over the last TRACE_MS of firmware time.
+  // ---------------------------------------------------------------
+  let trace;
+
+  function clearTrace() {
+    const signed = s.duty.map((d, i) => (s.forward[i] ? d : -d));
+    trace = { pwm: [[s.t, ...signed]], pulses: [[], []], sonar: [], states: [] };
+    readTrace();
+  }
+
+  function readTrace() {
+    for (const e of JSON.parse(bench.trace())) {
+      if (e[0] === "pwm") trace.pwm.push([e[1], e[2], e[3]]);
+      else if (e[0] === "pulse") trace.pulses[e[2]].push(e[1]);
+      else trace.states.push([e[1], e[2]]);
+    }
+  }
+
+  function recordTrace() {
+    readTrace();
+    trace.sonar.push([s.t, distanceCm]);
+    // Keep the last value before the window, so lines start at its left edge.
+    const from = s.t - TRACE_MS;
+    const trim = (list, time) => {
+      let i = 0;
+      while (i < list.length - 1 && time(list[i + 1]) < from) i++;
+      if (i) list.splice(0, i);
+    };
+    trim(trace.pwm, (e) => e[0]);
+    trim(trace.sonar, (e) => e[0]);
+    trim(trace.states, (e) => e[0]);
+    for (const p of trace.pulses) trim(p, (e) => e);
+  }
+
+  const SCOPE_ROWS = [
+    ["PWM left", 52],
+    ["PWM right", 52],
+    ["Encoder left", 22],
+    ["Encoder right", 22],
+    ["Sonar", 52],
+  ];
+  const SCOPE_TOP = 40;
+  const SCOPE_H = SCOPE_TOP + SCOPE_ROWS.reduce((n, [, h]) => n + h + 6, 0) + 14;
+  const SONAR_MAX_CM = 100;
+  ui.scope.style.height = `${SCOPE_H}px`;
+
+  function drawScope() {
+    const c = ui.scope;
+    const W = c.clientWidth;
+    if (!W || !trace) return;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    if (c.width !== Math.round(W * ratio) || c.height !== Math.round(SCOPE_H * ratio)) {
+      c.width = Math.round(W * ratio);
+      c.height = Math.round(SCOPE_H * ratio);
+    }
+    const g = c.getContext("2d");
+    g.setTransform(ratio, 0, 0, ratio, 0, 0);
+    g.clearRect(0, 0, W, SCOPE_H);
+    g.font = "11px 'Geist Mono', ui-monospace, monospace";
+    g.textBaseline = "middle";
+    const left = Math.max(...SCOPE_ROWS.map(([name]) => g.measureText(name).width)) + 12;
+    const t1 = s.t;
+    const t0 = t1 - TRACE_MS;
+    const x = (t) => left + ((t - t0) / TRACE_MS) * (W - left - 6);
+
+    // Rows: a label, a baseline, and the row's top and bottom.
+    const rows = [];
+    let y = SCOPE_TOP;
+    for (const [name, h] of SCOPE_ROWS) {
+      rows.push({ name, top: y, h });
+      g.fillStyle = "#bcc2d1";
+      g.fillText(name, 0, y + h / 2);
+      y += h + 6;
+    }
+    g.fillStyle = "rgba(188, 194, 209, 0.75)";
+    g.fillText(`last ${TRACE_MS / 1000} s of firmware time`, left, SCOPE_H - 6);
+
+    // State changes: dashed marks with their names in up to three lanes.
+    const laneEnd = [-Infinity, -Infinity, -Infinity];
+    for (const [t, label] of trace.states) {
+      if (t < t0) {
+        // The state the window opens in, from before it.
+        g.fillStyle = "#bcc2d1";
+        g.fillText(label, left, 6);
+        laneEnd[0] = left + g.measureText(label).width + 6;
+        continue;
+      }
+      const w = g.measureText(label).width;
+      const lx = Math.min(x(t) + 3, W - w - 2);
+      // A one-pass state such as START_AVOID often sits a few pixels from
+      // the next; with no free lane its mark stays and its name is left out.
+      const lane = laneEnd.findIndex((end) => lx > end);
+      g.strokeStyle = "rgba(245, 245, 245, 0.22)";
+      g.setLineDash([3, 3]);
+      g.beginPath();
+      g.moveTo(x(t), 4 + Math.max(lane, 0) * 12);
+      g.lineTo(x(t), y - 4);
+      g.stroke();
+      g.setLineDash([]);
+      if (lane < 0) continue;
+      laneEnd[lane] = lx + w + 6;
+      g.fillStyle = "#f5f5f5";
+      g.fillText(label, lx, 6 + lane * 12);
+    }
+
+    // PWM duty, above the midline driving forward, below it reversing.
+    for (const wheel of [0, 1]) {
+      const { top, h } = rows[wheel];
+      const mid = top + h / 2;
+      g.strokeStyle = "rgba(245, 245, 245, 0.14)";
+      g.beginPath();
+      g.moveTo(left, mid);
+      g.lineTo(W - 6, mid);
+      g.stroke();
+      g.strokeStyle = "#dfe2ea";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      let prevY = null;
+      for (let i = 0; i < trace.pwm.length; i++) {
+        const [t, ...duty] = trace.pwm[i];
+        const px = Math.max(x(t), left);
+        const py = mid - (duty[wheel] / 100) * (h / 2 - 2);
+        if (prevY === null) {
+          g.moveTo(px, py);
+        } else {
+          g.lineTo(px, prevY); // duty holds until the next write
+          g.lineTo(px, py);
+        }
+        prevY = py;
+      }
+      if (prevY !== null) g.lineTo(W - 6, prevY);
+      g.stroke();
+      g.lineWidth = 1;
+    }
+
+    // Encoder pulses: one tick per rising edge the firmware counted.
+    g.strokeStyle = "#dfe2ea";
+    for (const wheel of [0, 1]) {
+      const { top, h } = rows[2 + wheel];
+      g.beginPath();
+      for (const t of trace.pulses[wheel]) {
+        if (t < t0) continue;
+        g.moveTo(x(t), top + 3);
+        g.lineTo(x(t), top + h - 3);
+      }
+      g.stroke();
+    }
+
+    // Distance the sensor saw, against the firmware's stop threshold.
+    const sonar = rows[4];
+    const sy = (cm) => sonar.top + sonar.h - (Math.min(cm, SONAR_MAX_CM) / SONAR_MAX_CM) * (sonar.h - 6);
+    g.strokeStyle = "rgba(255, 154, 107, 0.7)";
+    g.setLineDash([4, 3]);
+    g.beginPath();
+    g.moveTo(left, sy(STOP_CM));
+    g.lineTo(W - 6, sy(STOP_CM));
+    g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = "#ff9a6b";
+    g.fillText(`stop ${STOP_CM} cm`, 0, sy(STOP_CM));
+    // Held from one frame's reading to the next; a gap where no echo returned.
+    g.strokeStyle = "#46e07a";
+    g.lineWidth = 1.5;
+    g.beginPath();
+    let held = null;
+    for (const [t, cm] of trace.sonar) {
+      const px = Math.max(x(t), left);
+      if (held !== null) g.lineTo(px, held);
+      held = cm >= 999 ? null : sy(cm);
+      if (held !== null) g.moveTo(px, held);
+    }
+    if (held !== null) g.lineTo(W - 6, held);
+    g.stroke();
+    g.lineWidth = 1;
+  }
+
+  // The state machine, the motors, and their gears, from the firmware state.
+  function updateSignals() {
+    const label = s.blocked ? "BLOCKED" : s.horn ? "HORN" : s.manual || s.state;
+    for (const el of ui.states) {
+      if (el.dataset.state === label) el.setAttribute("aria-current", "step");
+      else el.removeAttribute("aria-current");
+    }
+    // Wheel duty as the motor driver sees it: left on ENB, right on ENA.
+    s.duty.forEach((duty, i) => {
+      const dir = duty === 0 ? "off" : s.forward[i] ? "forward" : "reverse";
+      ui.motors[i].textContent = duty === 0 ? "off" : `${duty} % ${dir}`;
+      ui.motors[i].closest(".motor").dataset.on = String(duty > 0);
+    });
+  }
+
+  function turnGears() {
+    if (reduceMotion) return;
+    // The gearbox output turns with the wheel: one turn per 20 encoder pulses.
+    robot.turns.forEach((turns, i) => (ui.gears[i].style.transform = `rotate(${(turns * 360) % 360}deg)`));
+  }
+
+  // ---------------------------------------------------------------
   // Readout
   // ---------------------------------------------------------------
   let lastStatus = "";
 
   function plainStatus() {
     if (!s.connected) return "Phone disconnected, so the firmware stopped the robot. Press Connect to link again.";
-    if (s.blocked && s.horn) return "Something is closer than 15 cm, so it refuses to drive forward and honks. Turn or reverse.";
+    if (s.blocked && s.horn) return `Something is closer than ${STOP_CM} cm, so it refuses to drive forward and honks. Turn or reverse.`;
     if (s.blocked) return "Still blocked. Turn or reverse away from the obstacle.";
     if (s.horn) return "Honking: the motors buzz at low power. Press Honk again to stop.";
     if (s.autonomous) {
       const reversing = !s.forward[0] && !s.forward[1] && s.speed[0] + s.speed[1] > 2;
       if (s.state === "STALL_TURN" || (s.state === "FWD" && reversing)) {
-        return "A wheel stopped turning for 800 ms, so it backs up and turns away.";
+        return `A wheel stopped turning for ${FW.STALL_TIME_MS} ms, so it backs up for ${FW.STALL_REVERSE_MS} ms and turns away.`;
       }
       if (s.state === "AVOID" || s.state === "START_AVOID") {
-        return "Something within 15 cm: turning left for 39 wheel pulses, then carrying on.";
+        return `Something within ${STOP_CM} cm: braking, then turning left for ${FW.TURN_PULSES} wheel pulses.`;
       }
-      return "Cleaning on its own: straight ahead until something is within 15 cm. Press Stop cleaning to drive it yourself.";
+      return `Cleaning on its own: straight ahead until something is within ${STOP_CM} cm. Press Stop cleaning to drive it yourself.`;
     }
     if (s.manual === "FORWARD") return "Driving forward, with the PID keeping both wheels level. Press Drive again to brake.";
     if (s.manual === "BACKWARD") return "Reversing. Press Reverse again to brake.";
@@ -685,7 +934,12 @@
       }
       key.setAttribute("aria-pressed", String(pressed));
     }
-    audio.set(s.horn && s.led ? 0.04 : 0);
+    audio.set(running && s.horn && s.led ? 0.04 : 0);
+    updateSignals();
+    if (stepMode) {
+      drawScope();
+      turnGears();
+    }
   }
 
   // ---------------------------------------------------------------
@@ -705,32 +959,43 @@
       last = t;
       const ms = Math.floor(carry);
       carry -= ms;
-      if (bench && ms >= 1) {
-        distanceCm = measureDistance();
-        bench.set_distance(distanceCm >= 999 ? null : distanceCm);
-        const stuck = pushingAgainstFurniture();
-        bench.hold_wheel(0, stuck);
-        bench.hold_wheel(1, stuck);
-        bench.step(ms * timeScale);
-        read();
-        moveRobot();
-        captionEvents();
-      }
+      if (bench && ms >= 1) advance(() => bench.step(ms * timeScale));
       draw();
+      drawScope();
+      turnGears();
       frames += 1;
       if (frames % 4 === 0 || pendingNote) updateUi();
     } catch (err) {
-      // Stop and say so rather than freeze silently; Reset room starts it again.
-      running = false;
-      ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
-      console.error(err);
+      fail(err);
       return;
     }
     raf = requestAnimationFrame(frame);
   }
 
+  // Stop and say so rather than freeze silently; Reset room starts it again.
+  function fail(err) {
+    running = false;
+    ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
+    console.error(err);
+  }
+
+  // One step of the world around the firmware: what the sensor sees and
+  // whether the wheels are blocked go in, the firmware runs, the robot moves.
+  function advance(run) {
+    distanceCm = measureDistance();
+    bench.set_distance(distanceCm >= 999 ? null : distanceCm);
+    const stuck = pushingAgainstFurniture();
+    bench.hold_wheel(0, stuck);
+    bench.hold_wheel(1, stuck);
+    run();
+    read();
+    moveRobot();
+    captionEvents();
+    recordTrace();
+  }
+
   function wake() {
-    if (running || !visible || document.hidden) return;
+    if (running || stepMode || !visible || document.hidden) return;
     running = true;
     last = performance.now();
     audio.ctx?.resume();
@@ -753,6 +1018,7 @@
   }).observe($("remote"));
   document.addEventListener("visibilitychange", () => (document.hidden ? pause() : wake()));
   new ResizeObserver(resize).observe(canvas);
+  new ResizeObserver(() => drawScope()).observe(ui.scope);
 
   controls.forEach((c) => (c.disabled = true));
   resetRoom();

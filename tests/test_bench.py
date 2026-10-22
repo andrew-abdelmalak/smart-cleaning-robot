@@ -179,3 +179,30 @@ def test_bench_compiles_for_micropython(tmp_path: Path) -> None:
     out = tmp_path / "bench.mpy"
     subprocess.run([mpy_cross, "-o", str(out), str(BENCH_PATH)], check=True)
     assert out.stat().st_size > 0
+
+
+def test_trace_records_the_brake_pulse_and_states(stand: ModuleType) -> None:
+    # The page draws these: the 50 ms reverse brake before the pivot, the
+    # one-pass START_AVOID state, and the encoder pulses.
+    start_cleaning(stand)
+    stand.bench.trace()
+    stand.bench.set_distance(10)
+    stand.bench.step(200)
+    events = json.loads(stand.bench.trace())
+    states = [e[2] for e in events if e[0] == "state"]
+    assert states[:2] == ["START_AVOID", "AVOID"]
+    drives = [e for e in events if e[0] == "pwm"]
+    brake = next(i for i, e in enumerate(drives) if e[2] < 0 and e[3] < 0)
+    fw = stand.fw
+    assert drives[brake][2] == -fw.BRAKE_DUTY_PERCENT
+    assert drives[brake + 1][2:] == [0, 0]
+    assert drives[brake + 1][1] - drives[brake][1] == fw.BRAKE_DURATION_MS
+    assert any(e[0] == "pulse" for e in events)
+    assert stand.bench.trace() == "[]"
+
+
+def test_step_once_runs_one_loop_pass(stand: ModuleType) -> None:
+    start_cleaning(stand)
+    before = stand.clock.us
+    stand.bench.step_once()
+    assert 20_000 <= stand.clock.us - before < 25_000

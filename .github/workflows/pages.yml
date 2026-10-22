@@ -32,7 +32,7 @@ jobs:
 
       # The site runs the real firmware, so it ships the file the board runs,
       # plus the demo clips and diagrams that also appear in the README, and
-      # the thesis PDF that search results open at a page.
+      # the thesis PDF that the viewer below opens.
       - name: Assemble site
         run: |
           mkdir -p _site/firmware
@@ -46,6 +46,19 @@ jobs:
       # checked against the SHA-256 pinned in scripts/vendor.json.
       - name: Fetch pinned third-party files
         run: python3 scripts/fetch_vendor.py _site/vendor
+
+      # Mozilla's prebuilt PDF viewer, pinned by version and checksum. The
+      # thesis link and every search result open the thesis in it.
+      - name: Add the PDF.js viewer
+        env:
+          PDFJS_VERSION: 6.4.299
+          PDFJS_SHA256: f2245eb7ef3f674c872fe568a177bfec15874f5c034613e55d8e307f93ebd86d
+        run: |
+          curl -sSfL -o pdfjs.zip "https://github.com/mozilla/pdf.js/releases/download/v${PDFJS_VERSION}/pdfjs-${PDFJS_VERSION}-dist.zip"
+          echo "${PDFJS_SHA256}  pdfjs.zip" | sha256sum -c
+          unzip -q pdfjs.zip -d _site/pdfjs
+          find _site/pdfjs -name '*.map' -delete
+          rm _site/pdfjs/web/compressed.tracemonkey-pldi-09.pdf
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
