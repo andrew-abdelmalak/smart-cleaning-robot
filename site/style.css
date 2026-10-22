@@ -396,7 +396,8 @@ h1 {
 
 .chip:disabled,
 .key:disabled,
-.link:disabled {
+.link:disabled,
+.next:disabled {
   opacity: 0.45;
   cursor: progress;
 }
@@ -564,7 +565,6 @@ h1 {
   font-size: 0.75rem;
 }
 
-.sound,
 .link {
   padding: 6px 10px;
   font: 500 0.75rem/1 var(--sans);
@@ -573,14 +573,6 @@ h1 {
   border-radius: 8px;
   background: transparent;
   color: var(--on-slab);
-}
-
-.sound::after {
-  content: " off";
-}
-
-.sound[aria-pressed="true"]::after {
-  content: " on";
 }
 
 .link.is-off {
@@ -598,9 +590,278 @@ h1 {
   white-space: nowrap;
 }
 
-.sound:hover,
 .link:hover {
   border-color: rgb(245 245 245 / 0.45);
+}
+
+/* Switches: a slot as dark as the robot's body, and a knob that slides
+   across and lights up as the green start button on its lid. */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  color: var(--ink);
+  font: 500 0.8125rem/1.2 var(--sans);
+  cursor: pointer;
+}
+
+.switch input {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: #23262f;
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.45);
+  appearance: none;
+  cursor: pointer;
+}
+
+.switch input::before,
+.switch input::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease-out;
+}
+
+.switch input::before {
+  background: #b9bec8;
+  box-shadow: inset 0 -2px 0 #868d9c;
+}
+
+.switch input::after {
+  background: radial-gradient(circle at 35% 30%, #7df0a2, #2fae5a 60%);
+  box-shadow: 0 0 6px rgb(70 224 122 / 0.7);
+  opacity: 0;
+}
+
+.switch input:checked {
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.45), inset 0 0 0 1.5px var(--ember);
+}
+
+.switch input:checked::before,
+.switch input:checked::after {
+  transform: translateX(16px);
+  transform-origin: right center;
+}
+
+.switch input:checked::after {
+  opacity: 1;
+}
+
+/* Pressed, the knob squashes toward its travel. */
+.switch input:active::before,
+.switch input:active::after {
+  transform: scaleX(1.2);
+}
+
+.switch input:checked:active::before,
+.switch input:checked:active::after {
+  transform: translateX(16px) scaleX(1.2);
+}
+
+.switch:hover input:not(:checked):not(:disabled) {
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.45), inset 0 0 0 1.5px var(--muted);
+}
+
+.switch input:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+.switch-dark {
+  color: var(--on-slab);
+}
+
+.switch-dark input {
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.45), inset 0 0 0 1.5px rgb(245 245 245 / 0.22);
+}
+
+.switch-dark:hover input:not(:checked):not(:disabled) {
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.45), inset 0 0 0 1.5px rgb(245 245 245 / 0.5);
+}
+
+.switch-small {
+  min-height: 28px;
+  font-size: 0.75rem;
+}
+
+/* Inside the firmware: state machine, motors, and the signal trace */
+
+.scope-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--slab);
+  color: var(--on-slab);
+}
+
+.scope-panel :focus-visible {
+  outline-color: var(--ember);
+}
+
+.scope-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.scope-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font: 600 1rem/1.3 var(--sans);
+  letter-spacing: 0;
+}
+
+.next {
+  padding: 8px 12px;
+  border: 1px solid rgb(245 245 245 / 0.35);
+  border-radius: 9px;
+  background: var(--key);
+  color: var(--on-slab);
+  font: 500 0.8125rem/1.2 var(--sans);
+  cursor: pointer;
+}
+
+.next:hover {
+  background: var(--key-hover);
+  border-color: rgb(245 245 245 / 0.6);
+}
+
+.next:active {
+  transform: translateY(1px);
+}
+
+.fsm {
+  display: grid;
+  gap: 6px;
+}
+
+.fsm-label {
+  margin: 4px 0 0;
+  color: var(--on-slab-2);
+  font-size: 0.6875rem;
+}
+
+.fsm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fsm-row li,
+.fsm-chip {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--key);
+  color: var(--on-slab-2);
+  font: 500 0.6875rem/1.2 var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.fsm-flow {
+  gap: 6px 18px;
+}
+
+.fsm-flow li {
+  position: relative;
+}
+
+.fsm-flow li:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  color: var(--on-slab-2);
+  font-family: var(--sans);
+  transform: translateY(-50%);
+}
+
+.fsm-row [aria-current],
+.fsm-chip[aria-current] {
+  background: var(--ember);
+  color: var(--ink);
+}
+
+.fsm-note {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--on-slab-2);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.motors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}
+
+.motor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--on-slab-2);
+  font-size: 0.8125rem;
+}
+
+.motor b {
+  color: var(--on-slab);
+  font: 500 0.8125rem var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.gear {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--on-slab-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.gear-teeth {
+  stroke-width: 3;
+  stroke-dasharray: 2.064;
+  stroke-linecap: butt;
+}
+
+.gear-hub {
+  fill: currentColor;
+}
+
+.motor[data-on="true"] .gear {
+  stroke: var(--ember);
+}
+
+.scope {
+  width: 100%;
+}
+
+.scope-note {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--on-slab-2);
+  font-size: 0.75rem;
+  line-height: 1.55;
 }
 
 .sim-note {

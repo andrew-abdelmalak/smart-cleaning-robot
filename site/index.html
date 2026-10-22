@@ -83,7 +83,7 @@
         <div class="room-controls">
           <button class="chip" id="lid-button" type="button">Press the lid button</button>
           <button class="chip" id="room-reset" type="button">Reset room</button>
-          <button class="chip" id="room-speed" type="button" aria-pressed="false">4× speed</button>
+          <label class="switch"><input type="checkbox" role="switch" id="room-speed"> 4× speed</label>
           <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0 %</span></p>
         </div>
 
@@ -114,12 +114,49 @@
             <div class="readout-foot">
               <span>Connected to <span id="bench-name">PicoRobot</span></span>
               <span class="foot-buttons">
-                <button class="sound" id="bench-sound" type="button" aria-pressed="true">Sound</button>
+                <label class="switch switch-dark switch-small"><input type="checkbox" role="switch" id="bench-sound" checked> Sound</label>
                 <button class="link" id="bench-link" type="button">Disconnect</button>
               </span>
             </div>
           </div>
         </div>
+
+        <section class="scope-panel" aria-labelledby="scope-title">
+          <div class="scope-head">
+            <h2 class="scope-title" id="scope-title">Inside the firmware</h2>
+            <label class="switch switch-dark"><input type="checkbox" role="switch" id="step-mode"> Step by step</label>
+            <button class="next" id="step-next" type="button" hidden>Run one loop pass</button>
+          </div>
+
+          <div class="fsm">
+            <p class="fsm-label" id="fsm-auto">States while cleaning on its own</p>
+            <ol class="fsm-row fsm-flow" aria-labelledby="fsm-auto">
+              <li data-state="IDLE">IDLE</li>
+              <li data-state="START_FWD">START_FWD</li>
+              <li data-state="FWD">FWD</li>
+              <li data-state="START_AVOID">START_AVOID</li>
+              <li data-state="AVOID">AVOID</li>
+            </ol>
+            <p class="fsm-note">An obstacle under 15 cm brakes FWD into START_AVOID. A wheel that stops counting for 800 ms makes FWD reverse for 700 ms and brake into <span class="fsm-chip" data-state="STALL_TURN">STALL_TURN</span>. AVOID and STALL_TURN pivot left 39 pulses, then return to START_FWD.</p>
+            <p class="fsm-label" id="fsm-phone">Driven from the phone</p>
+            <ol class="fsm-row" aria-labelledby="fsm-phone">
+              <li data-state="FORWARD">FORWARD</li>
+              <li data-state="BACKWARD">BACKWARD</li>
+              <li data-state="LEFT">LEFT</li>
+              <li data-state="RIGHT">RIGHT</li>
+              <li data-state="HORN">HORN</li>
+              <li data-state="BLOCKED">BLOCKED</li>
+            </ol>
+          </div>
+
+          <div class="motors">
+            <p class="motor" data-on="false"><svg class="gear" id="gear-left" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" class="gear-teeth"/><circle cx="12" cy="12" r="6.6"/><path d="M12 5.4v4.4"/><circle cx="12" cy="12" r="1.6" class="gear-hub"/></svg><span>Left motor <b id="motor-left">off</b></span></p>
+            <p class="motor" data-on="false"><svg class="gear" id="gear-right" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" class="gear-teeth"/><circle cx="12" cy="12" r="6.6"/><path d="M12 5.4v4.4"/><circle cx="12" cy="12" r="1.6" class="gear-hub"/></svg><span>Right motor <b id="motor-right">off</b></span></p>
+          </div>
+
+          <canvas class="scope" id="scope" role="img" aria-label="Signal trace over the last six seconds: the PWM duty the firmware writes to each motor, a tick for each wheel encoder pulse, and the sonar distance against the 15 cm stop line, with the firmware's state changes marked."></canvas>
+          <p class="scope-note">The trace shows the firmware's own outputs and inputs. PWM is drawn as its duty cycle (the pins switch at 1 kHz), above the line driving forward and below it in reverse. Encoder ticks are the pulses its interrupt handlers counted. The sonar line is the distance the drawn room gives the sensor, up to 1 m. Wheel speed and the gears come from the simulation: the firmware's own motor model, slowed to the real clip's pace.</p>
+        </section>
       </div>
     </section>
 
