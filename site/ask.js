@@ -124,6 +124,29 @@ function setStatus(text) {
   status.textContent = text;
 }
 
+// Open the passage in the PDF.js viewer at its page, with up to 14 of its
+// words highlighted. Only words of letters, apostrophes, and hyphens count:
+// at digits or symbols the cleaned index text can differ from the PDF's own.
+// The phrase is the first run of at least four such words, so a passage that
+// opens with a figure number or a table cell still highlights a sentence.
+function viewerPhrase(text) {
+  const clean = (w) => /^[A-Za-z][A-Za-z'’-]*[,.;:]?$/.test(w);
+  const runs = [[]];
+  for (const w of text.split(" ")) {
+    if (clean(w)) runs.at(-1).push(w);
+    else if (runs.at(-1).length) runs.push([]);
+  }
+  const run = runs.find((r) => r.length >= 4) ?? runs.reduce((a, b) => (b.length > a.length ? b : a));
+  // End at a full stop: the next sentence may be a caption placed elsewhere on the page.
+  const stop = run.findIndex((w, i) => i >= 3 && w.endsWith("."));
+  const words = run.slice(0, stop >= 0 ? Math.min(stop + 1, 14) : 14);
+  return (words.join(" ") || text.split(" ")[0]).replace(/[,.;:]$/, "");
+}
+function viewerLink(p) {
+  const search = encodeURIComponent(viewerPhrase(p.text));
+  return `pdfjs/web/viewer.html?file=../../thesis.pdf#page=${p.pdfPage}&search=${search}&phrase=true`;
+}
+
 let shownKey = "";
 
 function show(passages) {
@@ -143,7 +166,7 @@ function show(passages) {
       text.className = "ask-text";
       text.textContent = p.text;
       const link = document.createElement("a");
-      link.href = `thesis.pdf#page=${p.pdfPage}`;
+      link.href = viewerLink(p);
       link.textContent = `Open ${page} of the PDF`;
       li.append(where, text, link);
       return li;
