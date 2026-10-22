@@ -13,7 +13,7 @@ MicroPython firmware for a low-cost floor-cleaning robot built on a Raspberry Pi
 
 The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed, with a custom KiCad PCB and a repurposed PS3 fan for suction. In autonomous mode it drives straight until something is closer than 15 cm, then pivots left and carries on. From a phone you can drive it, toggle the fan, and sound a horn. The parts cost 3,950 EGP in 2025, about 80 USD at the time.
 
-**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, in a drawn room you can drive it around, next to the real footage and the build story.
+**[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, in a drawn room you can drive it around, with a live trace of its motor, encoder, and sensor signals, next to the real footage and the build story.
 
 [![The 34-second project video, playing silently: the robot, how I built it, and its firmware running in a browser](docs/media/brag.webp)](https://andrew-abdelmalak.github.io/smart-cleaning-robot/media/brag.mp4)
 
@@ -155,6 +155,8 @@ To preview the site locally, fetch the files into `site/vendor/` (ignored by git
 ```bash
 python3 scripts/fetch_vendor.py site/vendor
 ```
+
+The Pages build also adds Mozilla's PDF.js viewer, pinned by version and SHA-256 in `.github/workflows/pages.yml`, so the thesis links open only on the deployed site.
 
 The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. To rebuild that index after the thesis changes, install poppler's `pdftotext` and run:
 

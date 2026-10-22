@@ -4,6 +4,17 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- "Inside the firmware" on the project site: a live trace of the PWM duty the firmware writes to each motor, the encoder pulses it counts, and the distance its sensor sees against the 15 cm stop line, with its state changes marked. The current state lights up in a strip of the firmware's states, two motor gears turn with the wheels, and a step-by-step mode runs one pass of the control loop per press.
+- A test that every number the site copies from the firmware still matches it.
+
+### Changed
+
+- The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
+- The site's "4× speed" and "Sound" controls are switches.
+- The README, the changelog, and the site describe my own work in the first person.
+
 ### Fixed
 
 - In the project video, the camera now moves from the remote to the robot while it honks, so the honk is on screen.
