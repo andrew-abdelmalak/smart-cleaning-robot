@@ -15,7 +15,7 @@ The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed,
 
 **[Try it in your browser](https://andrew-abdelmalak.github.io/smart-cleaning-robot/):** the project site runs this firmware, unchanged, in a drawn room you can drive it around, next to the real footage and the build story.
 
-[![The 34-second project video, playing silently: the robot, how it was built, and its firmware running in a browser](docs/media/brag.webp)](https://andrew-abdelmalak.github.io/smart-cleaning-robot/media/brag.mp4)
+[![The 34-second project video, playing silently: the robot, how I built it, and its firmware running in a browser](docs/media/brag.webp)](https://andrew-abdelmalak.github.io/smart-cleaning-robot/media/brag.mp4)
 
 *The project in 34 seconds; select it for the version with sound. Music: “Happy Beats & Business Moves Vol. 10” by Sascha Ende ([ende.app](https://ende.app/en)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
@@ -31,7 +31,7 @@ From the prototype tests in the [thesis](docs/thesis/thesis.pdf) (Table 4.2 and 
 | Stall recovery | Detected a stuck wheel and recovered in simulated stuck conditions |
 | Cleaning | Collected light debris (paper, dust) from hard floors |
 | System power | About 26 W at 12 V (estimate from component ratings) |
-| Build cost | 3,950 EGP in parts (about 80 USD at the June 2025 exchange rate), against 100 to 900 USD for the commercial robots compared |
+| Build cost | 3,950 EGP in parts (about 80 USD at the June 2025 exchange rate), against 100 to 900 USD for the commercial robots I compared |
 | Size and weight | 35 cm diameter, 17 cm high, 2.65 kg |
 
 ## How it works
@@ -106,7 +106,7 @@ You need a Raspberry Pi Pico W with [MicroPython for the Pico W](https://micropy
 4. Connect from nRF Toolbox (UART) and send the commands below.
 
 > [!WARNING]
-> Test with the wheels off the ground first, and check the motor wiring before you enable autonomous mode. The gains and thresholds are tuned for this chassis; expect to retune `OBSTACLE_THRESHOLD_CM`, `TURN_PULSES`, and the PID gains for another build.
+> Test with the wheels off the ground first, and check the motor wiring before you enable autonomous mode. I tuned the gains and thresholds for this chassis; expect to retune `OBSTACLE_THRESHOLD_CM`, `TURN_PULSES`, and the PID gains for another build.
 
 ### Commands
 
@@ -164,7 +164,7 @@ uv run scripts/build_thesis_index.py
 uv run pytest tests/test_thesis_index.py
 ```
 
-With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When the index was built, 17 of the 21 did. CI skips that check because it needs a 23 MB model download.
+With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When I built the index, 17 of the 21 did. CI skips that check because it needs a 23 MB model download.
 
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)

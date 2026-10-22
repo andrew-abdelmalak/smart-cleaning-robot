@@ -14,4 +14,4 @@ Follow [SECURITY.md](SECURITY.md).
 
 ## What I do not support
 
-Builds that differ from the thesis hardware. The firmware gains and thresholds are tuned for this chassis, and I cannot debug other wiring or motors.
+Builds that differ from the thesis hardware. I tuned the firmware gains and thresholds for this chassis, and I cannot debug other wiring or motors.

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The firmware's public interface is its BLE command set, its pin assignments, and its tuned constants.
+I record all notable changes to this project here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The firmware's public interface is its BLE command set, its pin assignments, and its tuned constants.
 
 ## [Unreleased]
 
@@ -14,7 +14,7 @@ A new drawn room on the project site, a speed control, and a re-recorded project
 
 ### Changed
 
-- The site's drawn room is a new 4.8 m by 2.7 m living room, chosen by running the firmware in thousands of realistic layouts. Averaged over runs with slightly different timing, it cleans about 41 % of the floor in 2 minutes and 65 % in 5, with fewer stalls and less driving over cleaned floor than before.
+- The site's drawn room is a new 4.8 m by 2.7 m living room. I chose it by running the firmware in thousands of realistic layouts. Averaged over runs with slightly different timing, it cleans about 41 % of the floor in 2 minutes and 65 % in 5, with fewer stalls and less driving over cleaned floor than before.
 - The simulated ultrasonic sensor covers the HC-SR04's 30-degree measuring angle from its datasheet, not 15 degrees, so it sees walls the robot approaches at a shallow angle.
 - The cleaning score counts the floor the nozzle can reach, so it can reach 100 %, and sits beside the room's buttons instead of over the drawing.
 
@@ -71,7 +71,7 @@ The firmware now has host-side tests, CI, and fixes for five control-logic bugs,
 
 - The firmware moved from `main.py` to `firmware/main.py`. Copy it to the board as `main.py`, as before (#1).
 - The control loop is split into command, manual, and autonomous steps, with shared PID and feed-forward helpers, type hints, and narrower exception handling. Behavior is unchanged except for the fixes below (#1).
-- The README is rewritten, with diagrams, demo clips, and results checked against the thesis. It quotes the build cost in Egyptian pounds, as the thesis does (#1, #2).
+- I rewrote the README, with diagrams and demo clips, and checked its results against the thesis. It quotes the build cost in Egyptian pounds, as the thesis does (#1, #2).
 
 ### Fixed
 
@@ -83,7 +83,7 @@ The firmware now has host-side tests, CI, and fixes for five control-logic bugs,
 
 ## [1.0.0] - 2026-03-19
 
-The firmware as submitted with the bachelor thesis (June 2025), published on GitHub.
+The firmware as I submitted it with the bachelor thesis (June 2025), published on GitHub.
 
 ### Added
 
