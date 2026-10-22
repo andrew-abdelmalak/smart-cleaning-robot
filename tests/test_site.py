@@ -1,7 +1,7 @@
 """Checks that the project site's references to the repository stay true.
 
 The site ships files the Pages workflow copies in (the firmware, the thesis
-PDF, Mozilla's PDF viewer) and copies a few numbers from the firmware. These
+PDF, Mozilla's PDF viewer) and quotes a few numbers from the firmware. These
 tests fail when either side changes without the other.
 """
 
@@ -58,32 +58,23 @@ def _firmware_constants() -> dict:
 
 
 def test_page_constants_match_the_firmware() -> None:
-    """Every number the page copies from the firmware still matches it."""
+    """Every firmware number the page quotes still matches the firmware."""
     fw = _firmware_constants()
     firmware = (ROOT / "firmware/main.py").read_text(encoding="utf-8")
     bench = (SITE / "bench.js").read_text(encoding="utf-8")
     html = (SITE / "index.html").read_text(encoding="utf-8")
 
-    copied = re.search(r"const FW = \{([^}]+)\}", bench).group(1)
-    pairs = dict(re.findall(r"(\w+): (\d+)", copied))
-    assert pairs, "bench.js has no FW constants"
-    for name, value in pairs.items():
-        assert int(value) == fw[name], name
-
-    # The text beside the state machine and the trace.
-    note = re.search(r'<p class="fsm-note">(.+?)</p>', html, re.DOTALL).group(1)
-    assert f"under {fw['OBSTACLE_THRESHOLD_CM']} cm" in note
-    assert f"for {fw['STALL_TIME_MS']} ms" in note
-    assert f"reverse for {fw['STALL_REVERSE_MS']} ms" in note
-    assert f"pivot left {fw['TURN_PULSES']} pulses" in note
-    assert f"the {fw['OBSTACLE_THRESHOLD_CM']} cm stop line" in html
-    assert "ena.freq(1000)" in firmware and "the pins switch at 1 kHz" in html
-
-    # The state chips name the firmware's own states and commands.
-    chips = set(re.findall(r'data-state="(\w+)"', html))
-    states = set(re.findall(r'autonomous_state = "(\w+)"', firmware))
-    commands = {"FORWARD", "BACKWARD", "LEFT", "RIGHT"}
-    assert chips == states | commands | {"HORN", "BLOCKED"}, chips
+    # The room's stop distance and the remote's status lines.
+    assert f"const STOP_CM = {fw['OBSTACLE_THRESHOLD_CM']};" in bench
+    shown = re.findall(r'(?:return|caption\()\s*"([^"\n]+)"', bench)
+    assert len(shown) > 10, shown
+    for text in shown:
+        for cm in re.findall(r"(\d+) cm", text):
+            assert int(cm) == fw["OBSTACLE_THRESHOLD_CM"], text
+        for pulses in re.findall(r"(\d+) wheel pulses", text):
+            assert int(pulses) == fw["TURN_PULSES"], text
+        for ms in re.findall(r"(\d+) ms", text):
+            assert int(ms) == fw["STALL_TIME_MS"], text
 
     # The For engineers section: loop period, diagram, and gains.
     assert firmware.count("time.sleep_ms(20)") == 2 and "a 20 ms control loop" in html

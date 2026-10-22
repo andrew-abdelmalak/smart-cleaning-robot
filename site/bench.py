@@ -93,9 +93,7 @@ class Pin:
 
 
 class PWM:
-    """Minimal machine.PWM that stores a 16-bit duty and reports each write."""
-
-    on_write = None  # set by Bench to record the signal trace
+    """Minimal machine.PWM that stores a 16-bit duty."""
 
     def __init__(self, pin: Pin) -> None:
         self._freq = 0
@@ -112,8 +110,6 @@ class PWM:
         if not 0 <= d <= 65535:
             raise ValueError("duty out of range")
         self._duty = d
-        if PWM.on_write:
-            PWM.on_write()
 
 
 class BLE:
@@ -208,12 +204,7 @@ fw.trig = fw.echo = sonar
 
 class Bench:
     """The hardware around the firmware: phone link, wheels, the lid
-    button, and the distance the ultrasonic sensor sees.
-
-    It also records a signal trace for the page: each PWM duty write with
-    the direction pins, each encoder pulse, and each state change, stamped
-    with the simulated clock in milliseconds.
-    """
+    button, and the distance the ultrasonic sensor sees."""
 
     def __init__(self) -> None:
         self.radio = BLE()
@@ -227,13 +218,8 @@ class Bench:
         self.target_us = clock.us
         self.motors_us = clock.us  # the clock time the wheels were last moved to
         self.button_release_us = None
-        self.events = []  # the signal trace since the page last read it
-        self.drive = None
-        self.label = None
         clock.on_sleep = self.run_motors
-        PWM.on_write = self.record_drive
         self.connect()
-        self.record_state()
 
     # Phone link and commands -------------------------------------------
 
@@ -261,45 +247,6 @@ class Bench:
     def set_load(self, fraction: float) -> None:
         self.load = float(fraction)
 
-    # Signal trace ----------------------------------------------------------
-
-    def record_drive(self) -> None:
-        """Record both wheels' duty in percent, negative when reversing."""
-        self.record_state()  # a state set just before this write
-        # set_motor_pwm sends the left command to ENB with IN3/IN4, and the
-        # right one to ENA with IN1/IN2; it sets the pins before the duties.
-        left = round(fw.enb.duty_u16() * 100 / 65535)
-        right = round(fw.ena.duty_u16() * 100 / 65535)
-        drive = (
-            left if fw.in3.value() else -left,
-            right if fw.in1.value() else -right,
-        )
-        if drive == self.drive:
-            return
-        self.drive = drive
-        now = clock.us // 1000
-        last = self.events[-1] if self.events else None
-        if last and last[0] == "pwm" and last[1] == now:
-            self.events.pop()  # the other wheel's write in the same call
-        self.events.append(["pwm", now, drive[0], drive[1]])
-
-    def record_state(self) -> None:
-        """Record the firmware's state when it changes."""
-        if fw.forward_blocked:
-            label = "BLOCKED"
-        elif fw.horn_active:
-            label = "HORN"
-        else:
-            label = fw.manual_command or fw.autonomous_state
-        if label != self.label:
-            self.label = label
-            self.events.append(["state", clock.us // 1000, label])
-
-    def trace(self) -> str:
-        """Return the trace since the last call as JSON, and clear it."""
-        events, self.events = self.events, []
-        return json.dumps(events)
-
     # Motors --------------------------------------------------------------
 
     def _target_pps(self, index: int) -> float:
@@ -326,12 +273,11 @@ class Bench:
             self.button_release_us = None
         self.forward = [fw.in3.value() == 1, fw.in1.value() == 1]
         pins = (fw.left_enc, fw.right_enc)
-        start = self.motors_us / 1000
         elapsed = (clock.us - self.motors_us) / 1000
         self.motors_us = clock.us
         steps = max(1, int(elapsed // PHYSICS_STEP_MS))
         dt = elapsed / steps
-        for k in range(steps):
+        for _ in range(steps):
             for i in (0, 1):
                 if self.held[i]:
                     self.speed[i] = 0.0
@@ -341,16 +287,10 @@ class Bench:
                 pulses = self.speed[i] * dt / 1000
                 sign = 1 if self.forward[i] else -1
                 self.turns[i] += sign * pulses / PULSES_PER_REV
-                before = self.partial[i]
                 self.partial[i] += pulses
-                edge = 1
                 while self.partial[i] >= 1:
                     self.partial[i] -= 1
                     pins[i].handler(pins[i])  # single channel: always counts up
-                    # The time within this step at which the count crossed.
-                    at = start + (k + (edge - before) / pulses) * dt
-                    self.events.append(["pulse", round(at), i])
-                    edge += 1
 
     # Loop ----------------------------------------------------------------
 
@@ -364,13 +304,6 @@ class Bench:
         self.target_us += ms * 1000
         while clock.us < self.target_us:
             fw.control_step()
-            self.record_state()
-
-    def step_once(self) -> None:
-        """Run exactly one pass of the firmware's control loop."""
-        fw.control_step()
-        self.record_state()
-        self.target_us = clock.us
 
     def state(self) -> str:
         """Return the firmware and stand state as JSON for bench.js."""
