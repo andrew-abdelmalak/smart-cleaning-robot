@@ -265,6 +265,7 @@ class Bench:
 
     def record_drive(self) -> None:
         """Record both wheels' duty in percent, negative when reversing."""
+        self.record_state()  # a state set just before this write
         # set_motor_pwm sends the left command to ENB with IN3/IN4, and the
         # right one to ENA with IN1/IN2; it sets the pins before the duties.
         left = round(fw.enb.duty_u16() * 100 / 65535)
@@ -340,11 +341,16 @@ class Bench:
                 pulses = self.speed[i] * dt / 1000
                 sign = 1 if self.forward[i] else -1
                 self.turns[i] += sign * pulses / PULSES_PER_REV
+                before = self.partial[i]
                 self.partial[i] += pulses
+                edge = 1
                 while self.partial[i] >= 1:
                     self.partial[i] -= 1
                     pins[i].handler(pins[i])  # single channel: always counts up
-                    self.events.append(["pulse", round(start + (k + 1) * dt), i])
+                    # The time within this step at which the count crossed.
+                    at = start + (k + (edge - before) / pulses) * dt
+                    self.events.append(["pulse", round(at), i])
+                    edge += 1
 
     # Loop ----------------------------------------------------------------
 

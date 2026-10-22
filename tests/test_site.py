@@ -37,7 +37,8 @@ def test_local_assets_exist() -> None:
 
 def test_thesis_opens_in_the_pinned_viewer() -> None:
     ask = (SITE / "ask.js").read_text(encoding="utf-8")
-    assert f"`{VIEWER}#page=${{p.pdfPage}}&search=${{search}}&phrase=true`" in ask
+    link = f"`{VIEWER}#page=${{Number(p.pdfPage)}}&search=${{search}}&phrase=true`"
+    assert link in ask
     assert "cp docs/thesis/thesis.pdf _site/" in PAGES
     assert "PDFJS_VERSION: 6.4.299" in PAGES
     assert re.search(r"PDFJS_SHA256: [0-9a-f]{64}\n", PAGES)

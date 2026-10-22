@@ -849,7 +849,7 @@ h1 {
 }
 
 .motor[data-on="true"] .gear {
-  stroke: var(--ember);
+  stroke: var(--on-slab);
 }
 
 .scope {

@@ -144,7 +144,7 @@ function viewerPhrase(text) {
 }
 function viewerLink(p) {
   const search = encodeURIComponent(viewerPhrase(p.text));
-  return `pdfjs/web/viewer.html?file=../../thesis.pdf#page=${p.pdfPage}&search=${search}&phrase=true`;
+  return `pdfjs/web/viewer.html?file=../../thesis.pdf#page=${Number(p.pdfPage)}&search=${search}&phrase=true`;
 }
 
 let shownKey = "";

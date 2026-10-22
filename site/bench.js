@@ -375,6 +375,13 @@
       log(note ? `> ${command}  ${note}` : `> ${command}`, "cmd");
     };
     if (command === "HORN" || command === "FORWARD") audio.unlock();
+    if (stepMode) {
+      // The firmware reads the command on its next pass; until then only
+      // the latest one waits, as in last_ble_command.
+      log(`> ${command}  waiting for the next loop pass`, "cmd");
+      read();
+      updateUi();
+    }
     wake();
   }
 
@@ -385,6 +392,7 @@
     const cmd = ARROWS[e.key];
     // A held key repeats, and a repeated drive command means brake.
     if (!cmd || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target.matches("input") || e.target.closest(".scope-panel")) return;
     e.preventDefault();
     send(cmd);
   });
@@ -425,11 +433,15 @@
   });
 
   ui.next.addEventListener("click", () => {
-    const before = s.t;
-    advance(() => bench.step_once());
-    log(`One loop pass: ${s.t - before} ms of firmware time`, "event");
-    updateUi();
-    draw();
+    try {
+      const before = s.t;
+      advance(() => bench.step_once());
+      log(`One loop pass: ${s.t - before} ms of firmware time`, "event");
+      updateUi();
+      draw();
+    } catch (err) {
+      fail(err);
+    }
   });
 
   ui.link.addEventListener("click", () => {
@@ -659,16 +671,21 @@
   let trace;
 
   function clearTrace() {
-    trace = { pwm: [], pulses: [[], []], sonar: [], states: [] };
-    for (const e of JSON.parse(bench.trace())) if (e[0] === "state") trace.states.push([e[1], e[2]]);
+    const signed = s.duty.map((d, i) => (s.forward[i] ? d : -d));
+    trace = { pwm: [[s.t, ...signed]], pulses: [[], []], sonar: [], states: [] };
+    readTrace();
   }
 
-  function recordTrace() {
+  function readTrace() {
     for (const e of JSON.parse(bench.trace())) {
       if (e[0] === "pwm") trace.pwm.push([e[1], e[2], e[3]]);
       else if (e[0] === "pulse") trace.pulses[e[2]].push(e[1]);
       else trace.states.push([e[1], e[2]]);
     }
+  }
+
+  function recordTrace() {
+    readTrace();
     trace.sonar.push([s.t, distanceCm]);
     // Keep the last value before the window, so lines start at its left edge.
     const from = s.t - TRACE_MS;
@@ -690,7 +707,7 @@
     ["Encoder right", 22],
     ["Sonar", 52],
   ];
-  const SCOPE_TOP = 30;
+  const SCOPE_TOP = 40;
   const SCOPE_H = SCOPE_TOP + SCOPE_ROWS.reduce((n, [, h]) => n + h + 6, 0) + 14;
   const SONAR_MAX_CM = 100;
   ui.scope.style.height = `${SCOPE_H}px`;
@@ -700,7 +717,7 @@
     const W = c.clientWidth;
     if (!W || !trace) return;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    if (c.width !== Math.round(W * ratio)) {
+    if (c.width !== Math.round(W * ratio) || c.height !== Math.round(SCOPE_H * ratio)) {
       c.width = Math.round(W * ratio);
       c.height = Math.round(SCOPE_H * ratio);
     }
@@ -744,14 +761,14 @@
       g.strokeStyle = "rgba(245, 245, 245, 0.22)";
       g.setLineDash([3, 3]);
       g.beginPath();
-      g.moveTo(x(t), 4 + Math.max(lane, 0) * 9);
+      g.moveTo(x(t), 4 + Math.max(lane, 0) * 12);
       g.lineTo(x(t), y - 4);
       g.stroke();
       g.setLineDash([]);
       if (lane < 0) continue;
       laneEnd[lane] = lx + w + 6;
       g.fillStyle = "#f5f5f5";
-      g.fillText(label, lx, 6 + lane * 9);
+      g.fillText(label, lx, 6 + lane * 12);
     }
 
     // PWM duty, above the midline driving forward, below it reversing.
@@ -763,7 +780,7 @@
       g.moveTo(left, mid);
       g.lineTo(W - 6, mid);
       g.stroke();
-      g.strokeStyle = "#ff9a6b";
+      g.strokeStyle = "#dfe2ea";
       g.lineWidth = 1.5;
       g.beginPath();
       let prevY = null;
@@ -809,14 +826,18 @@
     g.setLineDash([]);
     g.fillStyle = "#ff9a6b";
     g.fillText(`stop ${STOP_CM} cm`, 0, sy(STOP_CM));
+    // Held from one frame's reading to the next; a gap where no echo returned.
     g.strokeStyle = "#46e07a";
     g.lineWidth = 1.5;
     g.beginPath();
-    trace.sonar.forEach(([t, cm], i) => {
+    let held = null;
+    for (const [t, cm] of trace.sonar) {
       const px = Math.max(x(t), left);
-      if (i) g.lineTo(px, sy(cm));
-      else g.moveTo(px, sy(cm));
-    });
+      if (held !== null) g.lineTo(px, held);
+      held = cm >= 999 ? null : sy(cm);
+      if (held !== null) g.moveTo(px, held);
+    }
+    if (held !== null) g.lineTo(W - 6, held);
     g.stroke();
     g.lineWidth = 1;
   }
@@ -913,7 +934,7 @@
       }
       key.setAttribute("aria-pressed", String(pressed));
     }
-    audio.set(s.horn && s.led ? 0.04 : 0);
+    audio.set(running && s.horn && s.led ? 0.04 : 0);
     updateSignals();
     if (stepMode) {
       drawScope();
@@ -945,13 +966,17 @@
       frames += 1;
       if (frames % 4 === 0 || pendingNote) updateUi();
     } catch (err) {
-      // Stop and say so rather than freeze silently; Reset room starts it again.
-      running = false;
-      ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
-      console.error(err);
+      fail(err);
       return;
     }
     raf = requestAnimationFrame(frame);
+  }
+
+  // Stop and say so rather than freeze silently; Reset room starts it again.
+  function fail(err) {
+    running = false;
+    ui.status.textContent = "The simulation stopped with an error. Press Reset room to start again.";
+    console.error(err);
   }
 
   // One step of the world around the firmware: what the sensor sees and
@@ -993,6 +1018,7 @@
   }).observe($("remote"));
   document.addEventListener("visibilitychange", () => (document.hidden ? pause() : wake()));
   new ResizeObserver(resize).observe(canvas);
+  new ResizeObserver(() => drawScope()).observe(ui.scope);
 
   controls.forEach((c) => (c.disabled = true));
   resetRoom();

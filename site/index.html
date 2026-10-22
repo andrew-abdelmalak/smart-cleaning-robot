@@ -83,7 +83,7 @@
         <div class="room-controls">
           <button class="chip" id="lid-button" type="button">Press the lid button</button>
           <button class="chip" id="room-reset" type="button">Reset room</button>
-          <label class="switch"><input type="checkbox" role="switch" id="room-speed"> 4× speed</label>
+          <label class="switch"><input type="checkbox" role="switch" id="room-speed" autocomplete="off"> 4× speed</label>
           <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0 %</span></p>
         </div>
 
@@ -114,7 +114,7 @@
             <div class="readout-foot">
               <span>Connected to <span id="bench-name">PicoRobot</span></span>
               <span class="foot-buttons">
-                <label class="switch switch-dark switch-small"><input type="checkbox" role="switch" id="bench-sound" checked> Sound</label>
+                <label class="switch switch-dark switch-small"><input type="checkbox" role="switch" id="bench-sound" checked autocomplete="off"> Sound</label>
                 <button class="link" id="bench-link" type="button">Disconnect</button>
               </span>
             </div>
@@ -124,7 +124,7 @@
         <section class="scope-panel" aria-labelledby="scope-title">
           <div class="scope-head">
             <h2 class="scope-title" id="scope-title">Inside the firmware</h2>
-            <label class="switch switch-dark"><input type="checkbox" role="switch" id="step-mode"> Step by step</label>
+            <label class="switch switch-dark"><input type="checkbox" role="switch" id="step-mode" autocomplete="off"> Step by step</label>
             <button class="next" id="step-next" type="button" hidden>Run one loop pass</button>
           </div>
 
@@ -155,7 +155,7 @@
           </div>
 
           <canvas class="scope" id="scope" role="img" aria-label="Signal trace over the last six seconds: the PWM duty the firmware writes to each motor, a tick for each wheel encoder pulse, and the sonar distance against the 15 cm stop line, with the firmware's state changes marked."></canvas>
-          <p class="scope-note">The trace shows the firmware's own outputs and inputs. PWM is drawn as its duty cycle (the pins switch at 1 kHz), above the line driving forward and below it in reverse. Encoder ticks are the pulses its interrupt handlers counted. The sonar line is the distance the drawn room gives the sensor, up to 1 m. Wheel speed and the gears come from the simulation: the firmware's own motor model, slowed to the real clip's pace.</p>
+          <p class="scope-note">The trace shows the firmware's own outputs and inputs. PWM is drawn as its duty cycle (the pins switch at 1 kHz), above the line driving forward and below it in reverse. Encoder ticks are the pulses its interrupt handlers counted. The sonar line is the distance the drawn room gives the sensor, drawn up to 1 m. Wheel speed and the gears come from the simulation: the firmware's own motor model, slowed to the real clip's pace.</p>
         </section>
       </div>
     </section>
