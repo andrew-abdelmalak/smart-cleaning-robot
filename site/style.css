@@ -389,11 +389,6 @@ h1 {
   border-color: var(--muted);
 }
 
-.chip[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
-
 .chip:disabled,
 .key:disabled,
 .link:disabled {
