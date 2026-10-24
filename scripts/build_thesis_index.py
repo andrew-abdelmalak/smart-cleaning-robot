@@ -35,6 +35,7 @@ PAGE_OFFSET = 13
 ABSTRACT_PAGE = 5
 BODY_PAGES = range(14, 64)  # Chapters 1 to 5
 APPENDIX_PAGES = range(67, 70)  # Bill of materials
+COVERAGE = 0.9  # share of the PDF text the passages must hold; measured 0.93
 
 
 def page_text(page: int) -> list[str]:
@@ -64,9 +65,14 @@ def normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKC", text).lower())
 
 
-def pdf_pages() -> dict[int, str]:
-    pages = [ABSTRACT_PAGE, *BODY_PAGES, *APPENDIX_PAGES]
-    return {page: normalize(" ".join(page_text(page))) for page in pages}
+def pdf_pages() -> dict[int, tuple[str, str]]:
+    """Each page's text normalized as one string, and as space-separated words."""
+    pages = {}
+    for page in [ABSTRACT_PAGE, *BODY_PAGES, *APPENDIX_PAGES]:
+        text = " ".join(page_text(page))
+        words = " ".join(w for w in map(normalize, text.split()) if w)
+        pages[page] = (normalize(text), f" {words} ")
+    return pages
 
 
 def _key(block: dict) -> str:
@@ -76,7 +82,7 @@ def _key(block: dict) -> str:
     return normalize(latex.block_text(block))[:40]
 
 
-def _check(passage: dict, text: str) -> list[str]:
+def _check(passage: dict, text: str, words: str) -> list[str]:
     """Parts of a passage the PDF does not show on its pages."""
     missing = []
     for block in passage["blocks"]:
@@ -92,8 +98,9 @@ def _check(passage: dict, text: str) -> list[str]:
         tokens = [w for w in map(normalize, latex.block_text(block).split()) if w]
         shingles = ["".join(tokens[k : k + 3]) for k in range(max(1, len(tokens) - 2))]
         found = sum(s in text for s in shingles)
-        # Numbers (figure and table numbers, values) must all match.
-        numbers = [w for w in tokens if re.search(r"\d", w) and w not in text]
+        # Numbers (figure and table numbers, values) must each match a whole
+        # word of the PDF, so 5.1 cannot pass inside 2551.
+        numbers = [w for w in tokens if re.search(r"\d", w) and f" {w} " not in words]
         if found < 0.9 * len(shingles) or numbers:
             missing.append(f"{latex.block_text(block)[:80]} {numbers}")
     return missing
@@ -115,7 +122,7 @@ def passages() -> list[dict]:
                 k
                 for k in range(at, len(order))
                 for key in keys
-                if key in pages[order[k]]
+                if key in pages[order[k]][0]
             ),
             None,
         )
@@ -126,12 +133,20 @@ def passages() -> list[dict]:
         at = where
         pdf_page = order[where]
         # A passage can run on past full-page figures, so look a few pages on.
-        text = "".join(pages[p] for p in order[where : where + 5])
-        problems += [f"p.{pdf_page}: {m}" for m in _check(passage, text)]
+        window = order[where : where + 5]
+        text = "".join(pages[p][0] for p in window)
+        words = "".join(pages[p][1] for p in window)
+        problems += [f"p.{pdf_page}: {m}" for m in _check(passage, text, words)]
         page = "v" if pdf_page == ABSTRACT_PAGE else str(pdf_page - PAGE_OFFSET)
         out.append({**passage, "page": page, "pdfPage": pdf_page})
     if problems:
         raise ValueError("passages differ from the PDF:\n" + "\n".join(problems))
+    # And the other way round: the passages hold most of the PDF's text. The
+    # rest is figure captions, headings, and page furniture the index leaves out.
+    held = sum(len(normalize(latex.passage_text(p))) for p in out)
+    total = sum(len(text) for text, _ in pages.values())
+    if held < COVERAGE * total:
+        raise ValueError(f"passages hold {held / total:.0%} of the PDF text")
     return out
 
 

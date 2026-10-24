@@ -63,7 +63,6 @@ LAYOUT = {
     "clearpage": 0,
     "noindent": 0,
     "phantomsection": 0,
-    "penalty0": 0,
     "hline": 0,
     "label": 1,
     "vspace": 1,
@@ -81,7 +80,8 @@ HEADINGS = ("chapter", "section", "subsection", "subsubsection")
 
 
 def strip_comments(src: str) -> str:
-    return "\n".join(re.sub(r"(?<!\\)%.*", "", line) for line in src.splitlines())
+    """Drop comments with their line ends, as LaTeX does, so no blank line appears."""
+    return re.sub(r"(?<!\\)%.*\n?", "", src)
 
 
 def group(s: str, i: int, open_: str = "{", close: str = "}") -> tuple[str, int]:
@@ -139,18 +139,18 @@ def split_top(s: str, sep: str) -> list[str]:
             env += 1
         elif s.startswith("\\end{", i):
             env -= 1
-        if s[i] == "\\" and not s.startswith(sep, i):
-            i += 2
+        if depth == 0 and env == 0 and s.startswith(sep, i):
+            parts.append(s[start:i])
+            i += len(sep)
+            start = i
+            continue
+        if s[i] == "\\":
+            i += 2  # an escaped character never opens or closes a group
             continue
         if s[i] == "{":
             depth += 1
         elif s[i] == "}":
             depth -= 1
-        elif depth == 0 and env == 0 and s.startswith(sep, i):
-            parts.append(s[start:i])
-            i += len(sep)
-            start = i
-            continue
         i += 1
     parts.append(s[start:])
     return parts
@@ -211,7 +211,7 @@ class Inline:
                     text.append(" ")
                     i += 2
                     continue
-                m = re.match(r"\\([A-Za-z]+\*?|[0-9]+)", s[i:])
+                m = re.match(r"\\([A-Za-z]+\*?)", s[i:])
                 if not m:
                     raise ValueError(f"unknown escape {s[i : i + 20]!r}")
                 name, i = m[1], i + m.end()
@@ -250,7 +250,8 @@ class Inline:
                 elif name == "newline":
                     text.append(" ")
                 elif name in LAYOUT:
-                    _, i = optional(s, i)
+                    if name == "includegraphics":
+                        _, i = optional(s, i)
                     for _ in range(LAYOUT[name]):
                         _, i = group(s, i)
                 else:
@@ -270,6 +271,9 @@ class Inline:
             elif s.startswith("``", i) or s.startswith("''", i):
                 text.append("“" if c == "`" else "”")
                 i += 2
+            elif s.startswith("---", i):
+                text.append("—")
+                i += 3
             elif s.startswith("--", i):
                 text.append("–")
                 i += 2
@@ -301,6 +305,8 @@ class Inline:
             elif s[i] == ",":
                 out.append([style, ", "])
                 i += 1
+            elif s[i] in "\\{}":
+                raise ValueError(f"unknown math {s[i : i + 12]!r}")
             else:
                 out.append([style, s[i]])
                 i += 1
@@ -349,7 +355,7 @@ def words_in(block: dict) -> int:
 
 def drop_empty_columns(head: list[dict], rows: list[list[dict]]) -> tuple:
     """Leave out columns that only held pictures, which parse to nothing."""
-    width = sum(c["span"] for c in head)
+    width = max(sum(c["span"] for c in r) for r in [head, *rows])
 
     def columns(row: list[dict]) -> list[tuple[int, dict]]:
         out, col = [], 0
@@ -373,7 +379,14 @@ def drop_empty_columns(head: list[dict], rows: list[list[dict]]) -> tuple:
                 out.append({**cell, "span": span})
         return out
 
-    return narrow(head), [narrow(r) for r in rows]
+    def text(rs: list[list[dict]]) -> list[str]:
+        return [plain(c["t"]) for r in rs for c in r if plain(c["t"])]
+
+    head2, rows2 = narrow(head), [narrow(r) for r in rows]
+    # Only a dropped column's header ("Photo") may go; body text may not.
+    if text(rows) != text(rows2):
+        raise ValueError("dropping empty columns would drop text")
+    return head2, rows2
 
 
 # ---------------------------------------------------------------------------
@@ -407,15 +420,15 @@ class Reader:
     def __init__(self) -> None:
         self.labels: dict[str, str] = {}
         self.inline: Inline | None = None
-        self.chapter = ""
-        self.table_number = 0
+        self.table_numbers: list[str] = []  # in order; table() takes each in turn
 
     # Numbering --------------------------------------------------------------
 
     def number(self) -> None:
         for chapter, src in sources():
             counters = [0, 0, 0]
-            figure = table = 0
+            figure = table = sub = 0
+            last = chapter
             for m in re.finditer(
                 r"\\(chapter|section|subsection|subsubsection)(\*?)\{|\\begin\{(figure|sidewaysfigure|table|longtable|subfigure)\}|\\label\{([^}]+)\}|(\\end\{subfigure\})",
                 src,
@@ -439,6 +452,7 @@ class Reader:
                 elif env in ("table", "longtable"):
                     table += 1
                     last = f"{chapter}.{table}"
+                    self.table_numbers.append(last)
                 elif sub_end:
                     last = f"{chapter}.{figure}"  # the figure's own label follows
                 elif label:
@@ -499,7 +513,10 @@ class Reader:
             elif env in ("table", "longtable"):
                 end_para()
                 out.append({"table": self.table(body, env)})
-            elif env in ("figure", "sidewaysfigure", "center"):
+            elif env == "center":
+                end_para()
+                out += self.blocks(body)
+            elif env in ("figure", "sidewaysfigure"):
                 end_para()
             else:
                 raise ValueError(f"unknown environment {env}")
@@ -509,8 +526,10 @@ class Reader:
     def list_block(self, body: str, env: str) -> dict:
         items = []
         for part in split_top(body, r"\item")[1:]:
-            _, j = optional(part, 0)
-            items.append(self.blocks(part[j:]))
+            label, _ = optional(part, 0)
+            if label is not None:
+                raise ValueError(f"item label [{label}] is not supported")
+            items.append(self.blocks(part))
         return {"ol": items, "start": 1} if env == "enumerate" else {"ul": items}
 
     def table(self, body: str, env: str) -> dict:
@@ -522,8 +541,15 @@ class Reader:
             body = body[: m.start()] + body[end:]
         foot = ""
         if env == "table":
+            _, j = optional(body, 0)  # placement, such as [htbp]
+            body = body[j:]
+            if body.count(r"\begin{tabular}") != 1:
+                raise ValueError(f"table {caption!r} needs exactly one tabular")
             start = body.index(r"\begin{tabular}")
-            body = environment(body, start, "tabular")[0]
+            inner, end = environment(body, start, "tabular")
+            if plain(self.runs(body[:start] + body[end:])).strip():
+                raise ValueError(f"text beside the tabular in table {caption!r}")
+            body = inner
             _, j = group(body, 0)  # column spec
             head_part, *rows = split_top(body[j:], "\\\\")
         else:
@@ -538,8 +564,7 @@ class Reader:
             rows = split_top(rest, "\\\\")
         head = self.cells(head_part)
         rows = [c for r in [*rows, *split_top(foot, "\\\\")] if (c := self.cells(r))]
-        self.table_number += 1
-        number = f"{self.chapter}.{self.table_number}"
+        number = self.table_numbers.pop(0)
         head, rows = drop_empty_columns(head, rows)
         return {"caption": f"Table {number}: {caption}", "head": head, "rows": rows}
 
@@ -569,7 +594,6 @@ def document() -> list[dict]:
     units = []
     heading_at = re.compile(r"\\(chapter|section|subsection|subsubsection)(\*?)\{")
     for chapter, src in sources():
-        reader.chapter, reader.table_number = chapter, 0
         counters = [0, 0]
         unit = {"section": chapter, "title": "", "heading": ""}
         pos = 0
@@ -594,6 +618,8 @@ def document() -> list[dict]:
                     counters[1] = 0
                 number = ".".join([chapter, *map(str, counters[: level + 1])])
                 unit = {"section": number, "title": title, "heading": ""}
+    if reader.table_numbers:
+        raise ValueError(f"tables numbered but not read: {reader.table_numbers}")
     return units
 
 
