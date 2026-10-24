@@ -13,6 +13,11 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 - The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
 - The site's "4× speed" and "Sound" controls are switches.
 - The README, the changelog, and the site describe my own work in the first person.
+- "Ask the thesis" loads its language model in the background once the room's firmware is running and the browser is idle, so the first question gets meaning-based results at once. It skips this when the browser asks to save data or is on a 2G connection.
+- Each diagram on the site carries its full description as a visible caption, and the image viewer shows the whole caption on as many lines as it needs. The README describes the state machine in text below its diagram.
+- The site's "For engineers" section is now "How it works", like the README's.
+- Percentages on the site and in the README have no space before the % sign.
+- The project video, the only clip on the site with sound, has a "Play with sound" button under it that plays it from the start with its music. Scrolling away mutes it again.
 
 ### Removed
 
