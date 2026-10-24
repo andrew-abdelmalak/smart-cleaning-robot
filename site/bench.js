@@ -333,7 +333,7 @@
       ui.status.textContent = message; // the status line is announced; the overlay is not
       console.error(err);
     }
-    // ask.js waits for this before it downloads its language model.
+    // page.js waits for this before it loads the rest of the page.
     document.dispatchEvent(new Event("firmware-settled"));
   }
 

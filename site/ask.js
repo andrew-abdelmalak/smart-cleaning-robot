@@ -126,6 +126,31 @@ function setStatus(text) {
   status.textContent = text;
 }
 
+// The last search, kept for this tab. Back from the PDF viewer restores the
+// page from the browser's cache when it can; when the browser reloads it
+// instead, this puts the question and its results back as the page loads,
+// so the browser's scroll restore lands on them.
+const SAVED = "ask-the-thesis";
+function remember(question, passages) {
+  try {
+    sessionStorage.setItem(SAVED, JSON.stringify({ question, passages, status: status.textContent }));
+  } catch {
+    // Storage can be full or blocked; the search still works.
+  }
+}
+function restore() {
+  let saved = null;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(SAVED));
+  } catch {
+    return;
+  }
+  if (!saved?.passages?.length) return;
+  input.value = saved.question;
+  show(saved.passages);
+  setStatus(saved.status);
+}
+
 // Open the passage in the PDF.js viewer at its page, with up to 14 of its
 // words highlighted. Only words of letters, apostrophes, and hyphens count:
 // at digits or symbols the cleaned index text can differ from the PDF's own.
@@ -198,6 +223,7 @@ async function ask(question) {
     quick = rank(question, null);
     show(quick);
     setStatus(quick.length ? "Keyword matches while the language model loads." : "No keyword matches. The language model is loading.");
+    remember(question, quick);
   }
   let query;
   try {
@@ -214,15 +240,17 @@ async function ask(question) {
     return;
   }
   if (id !== latest) return;
-  show(rank(question, query));
+  const passages = rank(question, query);
+  show(passages);
   setStatus("The three passages closest in meaning to your question.");
+  remember(question, passages);
 }
 
 // Load the index and the model in the background, so the first question
-// gets meaning-based results at once. The download waits until the room's
-// firmware is running (or 8 s have passed) and the browser is idle, so it
-// never competes with the page's first content. Focusing the question box
-// starts it at once. With Save-Data on or on 2G, only a question starts it.
+// gets meaning-based results at once. page.js signals when the rest of the
+// page has loaded, so the model never competes with it; focusing the
+// question box starts it at once. With Save-Data on or on 2G, only a
+// question starts it.
 let preloading = false;
 function preload() {
   if (preloading) return;
@@ -243,9 +271,7 @@ function preload() {
 }
 const net = navigator.connection;
 if (!(net && (net.saveData || /2g/.test(net.effectiveType)))) {
-  const whenIdle = () => (window.requestIdleCallback ? requestIdleCallback(preload, { timeout: 4000 }) : setTimeout(preload, 500));
-  document.addEventListener("firmware-settled", whenIdle, { once: true });
-  setTimeout(whenIdle, 8000);
+  document.addEventListener("page-preloaded", preload, { once: true });
   input.addEventListener("focus", preload, { once: true });
 }
 
@@ -260,3 +286,5 @@ document.querySelectorAll("[data-ask]").forEach((button) => {
     ask(input.value);
   });
 });
+
+restore();
