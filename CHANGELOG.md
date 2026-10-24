@@ -12,6 +12,7 @@ The thesis opens in a PDF viewer on the project site, the site loads the rest of
 
 - The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
 - After the room's firmware starts, the site loads the rest of the page in the background, one file at a time in reading order: the videos, the PDF viewer and the thesis, then the "Ask the thesis" language model, so each part is ready when the visitor gets to it. It skips this when the browser asks to save data or is on a 2G connection; each part then loads when it is used.
+- "Ask the thesis" results read as the thesis does: the index now comes from the thesis LaTeX instead of the PDF's extracted text, so each result keeps its heading, numbered and bulleted lists, tables, bold labels, and subscripts, and starts and ends on whole sentences. The build checks every passage's words and numbers against the PDF, and every result highlights its passage in the viewer.
 - "Ask the thesis" keeps the last question and its results for the browser tab, so coming back from the PDF viewer shows them again even when the browser reloads the page.
 - The project video, the only clip on the site with sound, has a "Play with sound" button above it that plays it from the start with its music. Scrolling away mutes it again.
 - A test that every firmware number the site quotes still matches the firmware.

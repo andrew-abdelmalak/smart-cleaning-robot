@@ -160,7 +160,7 @@ python3 scripts/fetch_vendor.py site/vendor
 
 The Pages build also adds Mozilla's PDF.js viewer, pinned by version and SHA-256 in `.github/workflows/pages.yml`, so the thesis links open only on the deployed site.
 
-The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. To rebuild that index after the thesis changes, install poppler's `pdftotext` and run:
+The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. `scripts/thesis_latex.py` reads the passages from the thesis LaTeX, so results keep their headings, lists, tables, bold text, and subscripts. The build then places each passage on its PDF page and checks its words and numbers against the PDF's own text, so a parsing mistake stops the build. To rebuild the index after the thesis changes, install poppler's `pdftotext` and run:
 
 ```bash
 uv sync --group search
@@ -168,7 +168,7 @@ uv run scripts/build_thesis_index.py
 uv run pytest tests/test_thesis_index.py
 ```
 
-With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When I built the index, 17 of the 21 did. CI skips that check because it needs a 23 MB model download.
+With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When I built the index, 17 of the 21 did. CI skips that check because it needs a 23 MB model download, but still checks that the index matches what the parser reads from the LaTeX.
 
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)
