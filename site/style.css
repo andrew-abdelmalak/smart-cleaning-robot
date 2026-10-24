@@ -1420,6 +1420,51 @@ figcaption {
   }
 }
 
+/* Back to top: a slab-coloured button, shown once the hero has scrolled away. */
+
+.to-top {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--slab);
+  color: var(--on-slab);
+  box-shadow: 0 6px 18px -8px rgb(45 49 66 / 0.6);
+  opacity: 0;
+  transform: translateY(8px);
+  visibility: hidden;
+  transition:
+    opacity 180ms ease-out,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 220ms;
+}
+
+.to-top.is-shown {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.to-top:hover {
+  background: var(--key-hover);
+}
+
+.to-top svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Viewer for diagrams and photos */
 
 .zoom {
