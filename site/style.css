@@ -784,7 +784,7 @@ h1 {
 .build,
 .story,
 .results,
-.engineers,
+.how,
 .thesis {
   max-width: 1240px;
   margin: 0 auto;
@@ -818,6 +818,51 @@ figcaption {
   border-radius: 14px;
   background: var(--ink);
   box-shadow: 0 1px 2px rgb(45 49 66 / 0.08), 0 16px 40px -20px rgb(45 49 66 / 0.35);
+}
+
+/* The project video is the page's only clip with sound; the button above it says so and turns it on. */
+.film-sound {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px 9px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ember);
+  color: var(--paper);
+  font: 500 0.875rem/1 var(--sans);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.film-sound:hover {
+  background: var(--key-hover);
+}
+
+.film-sound:active {
+  transform: translateY(1px);
+}
+
+.film-sound svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--ember);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.film-sound-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.875rem;
 }
 
 .film figcaption {
@@ -1012,7 +1057,7 @@ figcaption {
 
 /* Engineers */
 
-.eng-grid {
+.how-grid {
   display: grid;
   gap: 40px;
   max-width: 1000px;
@@ -1233,12 +1278,12 @@ figcaption {
   list-style: none;
 }
 
-.ask-results li {
+.ask-results > li {
   padding: 20px 0;
   border-bottom: 1px solid var(--rule);
 }
 
-.ask-results li:first-child {
+.ask-results > li:first-child {
   border-top: 1px solid var(--rule);
 }
 
@@ -1248,11 +1293,86 @@ figcaption {
   color: var(--muted);
 }
 
+/* Passages keep the thesis's own structure: headings, lists, tables. */
+.ask-heading {
+  margin: 0 0 6px;
+  font: 600 1rem/1.35 var(--sans);
+}
+
 .ask-text {
   margin: 0 0 10px;
 }
 
-.ask-results a {
+.ask-label {
+  margin: 14px 0 4px;
+  font-size: 0.9375rem;
+}
+
+.ask-list {
+  margin: 0 0 10px;
+  padding-left: 1.3em;
+}
+
+.ask-list li {
+  margin: 0 0 6px;
+}
+
+.ask-list li::marker {
+  color: var(--muted);
+}
+
+.ask-list .ask-list {
+  margin: 6px 0 0;
+}
+
+.ask-list .ask-text {
+  margin: 0 0 6px;
+}
+
+.ask-results strong {
+  font-weight: 600;
+}
+
+.ask-results sub {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* Wide tables scroll inside the result, never the page. */
+.ask-table {
+  margin: 4px 0 12px;
+  overflow-x: auto;
+}
+
+.ask-table table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-table caption {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font: 500 0.8125rem/1.4 var(--mono);
+  text-align: left;
+}
+
+.ask-table th,
+.ask-table td {
+  padding: 7px 14px 7px 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ask-table th {
+  border-bottom-color: var(--ink);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ask-results > li > a {
   font: 500 0.875rem var(--mono);
   text-underline-offset: 3px;
 }
@@ -1350,15 +1470,20 @@ figcaption {
   box-shadow: 0 24px 64px -16px rgb(45 49 66 / 0.5);
 }
 
+/* The bar keeps its height for any caption length; the picture scrolls below it. */
+.viewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+
 .viewer::backdrop {
   background: rgb(45 49 66 / 0.72);
 }
 
 .viewer-bar {
-  position: sticky;
-  top: 0;
   display: flex;
-  align-items: center;
+  flex: none;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 10px 12px 10px 18px;
@@ -1366,13 +1491,14 @@ figcaption {
   background: var(--paper);
 }
 
+/* The whole caption, on as many lines as it needs. */
 .viewer-caption {
   margin: 0;
-  overflow: hidden;
+  max-width: 90ch;
   color: var(--muted);
   font-size: 0.875rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .viewer-close {
@@ -1399,14 +1525,15 @@ figcaption {
 }
 
 .viewer-body {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  max-height: calc(94vh - 58px);
   padding: 16px;
 }
 
 .viewer-body img {
   margin: 0 auto;
-  max-height: calc(94vh - 90px);
+  max-height: calc(94vh - 160px);
   border-radius: 8px;
 }
 

@@ -76,13 +76,14 @@ def test_page_constants_match_the_firmware() -> None:
         for ms in re.findall(r"(\d+) ms", text):
             assert int(ms) == fw["STALL_TIME_MS"], text
 
-    # The For engineers section: loop period, diagram, and gains.
+    # The How it works section: loop period, diagram caption, and gains.
     assert firmware.count("time.sleep_ms(20)") == 2 and "a 20 ms control loop" in html
-    assert (
-        f"obstacle closer than {fw['OBSTACLE_THRESHOLD_CM']} cm triggers "
-        f"a {fw['TURN_PULSES']}-pulse left pivot" in html
-    )
-    assert f"wheel stall longer than {fw['STALL_TIME_MS']} ms" in html
+    for text in (html, (ROOT / "README.md").read_text(encoding="utf-8")):
+        assert (
+            f"obstacle closer than {fw['OBSTACLE_THRESHOLD_CM']} cm triggers "
+            f"a {fw['TURN_PULSES']}-pulse left pivot" in text
+        )
+        assert f"wheel stall longer than {fw['STALL_TIME_MS']} ms" in text
     assert f"Reach the {fw['TURN_PULSES']}-pulse pivot" in html
     for loop, gains in (
         ("Straight", fw["GAINS_STRAIGHT"]),

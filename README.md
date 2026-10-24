@@ -45,7 +45,7 @@ The firmware is one file, [`firmware/main.py`](firmware/main.py), that runs a 20
 
 | Priority | Condition | Action |
 |---|---|---|
-| 1 | Horn on | Buzz the motors at 10 % duty as an audible horn |
+| 1 | Horn on | Buzz the motors at 10% duty as an audible horn |
 | 2 | Manual command active | Drive forward, backward, or pivot |
 | 3 | Autonomous mode on | Advance the cleaning state machine one step |
 | 4 | Otherwise | Make sure both motors are stopped |
@@ -56,6 +56,8 @@ The firmware is one file, [`firmware/main.py`](firmware/main.py), that runs a 20
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/state-machine-dark.svg">
   <img src="docs/diagrams/state-machine.svg" alt="State machine: from IDLE, CLEAN starts forward driving; an obstacle closer than 15 cm triggers a 39-pulse left pivot, and a wheel stall longer than 800 ms triggers reverse then the same pivot, both returning to forward driving.">
 </picture>
+
+From IDLE, `CLEAN` starts forward driving. An obstacle closer than 15 cm triggers a 39-pulse left pivot. A wheel stall longer than 800 ms triggers a reverse, then the same pivot. Both return to forward driving.
 
 ### Motion control
 
@@ -72,7 +74,7 @@ A pure PID controller on the wheel encoders drew enough current to cause brownou
 | Turn progress | Reach the target pivot of 39 encoder pulses | 0.6 / 0.1 / 0.2 |
 | Turn balance | Share the pivot between both wheels | 1.5 / 0.05 / 0.3 |
 
-The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 27, kV 0.66; right: kS 30, kV 0.61), with a right-wheel trim of 0.75 and duty capped at 95 %. All integrals are clamped to ±15.
+The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 27, kV 0.66; right: kS 30, kV 0.61), with a right-wheel trim of 0.75 and duty capped at 95%. All integrals are clamped to ±15.
 
 ## Hardware
 
@@ -158,7 +160,7 @@ python3 scripts/fetch_vendor.py site/vendor
 
 The Pages build also adds Mozilla's PDF.js viewer, pinned by version and SHA-256 in `.github/workflows/pages.yml`, so the thesis links open only on the deployed site.
 
-The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. To rebuild that index after the thesis changes, install poppler's `pdftotext` and run:
+The site's "Ask the thesis" search ranks passages from `site/thesis-index.json`. `scripts/thesis_latex.py` reads the passages from the thesis LaTeX, so results keep their headings, lists, tables, bold text, and subscripts. The build then places each passage on its PDF page and checks its words and numbers against the PDF's own text, so a parsing mistake stops the build. To rebuild the index after the thesis changes, install poppler's `pdftotext` and run:
 
 ```bash
 uv sync --group search
@@ -166,7 +168,7 @@ uv run scripts/build_thesis_index.py
 uv run pytest tests/test_thesis_index.py
 ```
 
-With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When I built the index, 17 of the 21 did. CI skips that check because it needs a 23 MB model download.
+With the `search` group installed, the tests also embed 21 sample questions and check that most find the section that answers them in the top three results. When I built the index, 17 of the 21 did. CI skips that check because it needs a 23 MB model download, but still checks that the index matches what the parser reads from the LaTeX.
 
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)

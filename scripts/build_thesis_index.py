@@ -1,6 +1,7 @@
 """Build site/thesis-index.json, the passage index behind "Ask the thesis".
 
-Splits the thesis PDF into short passages tagged with their section and page,
+Reads the thesis LaTeX into passages that keep its headings, lists, tables,
+and emphasis (scripts/thesis_latex.py), places each on its page of the PDF,
 then embeds each passage with the same model the site runs in the browser
 (all-MiniLM-L6-v2, 8-bit ONNX), so a question embedded on the page can be
 compared directly with the stored vectors.
@@ -15,9 +16,11 @@ import base64
 import json
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 
 import numpy as np
+import thesis_latex as latex
 
 ROOT = Path(__file__).resolve().parent.parent
 PDF = ROOT / "docs/thesis/thesis.pdf"
@@ -32,21 +35,7 @@ PAGE_OFFSET = 13
 ABSTRACT_PAGE = 5
 BODY_PAGES = range(14, 64)  # Chapters 1 to 5
 APPENDIX_PAGES = range(67, 70)  # Bill of materials
-TARGET_WORDS = 90
-
-CHAPTER = re.compile(r"^(?:Chapter (\d)|Appendix (A))$")
-# pdftotext puts a section number and its title on separate lines.
-SECTION_NUMBER = re.compile(r"^([1-5A])\.\d{1,2}(?:\.\d{1,2})?$")
-SECTION_TITLE = re.compile(r"^[A-Z][^.]{2,70}$")
-# Chapter titles wrap across lines in the PDF, so they come from the LaTeX.
-CHAPTER_TITLES = {
-    "1": "Introduction",
-    "2": "Theoretical Background and Literature Review",
-    "3": "Mechanical Design and Assembly",
-    "4": "Electrical and Control System Design and Testing",
-    "5": "Conclusion and Recommendations for Future Work",
-    "A": "Bill of Materials and Cost Analysis",
-}
+COVERAGE = 0.9  # share of the PDF text the passages must hold; measured 0.93
 
 
 def page_text(page: int) -> list[str]:
@@ -71,107 +60,93 @@ def page_text(page: int) -> list[str]:
     return lines
 
 
-def _section_key(number: str) -> tuple[int, ...]:
-    return tuple(0 if part == "A" else int(part) for part in number.split("."))
+def normalize(text: str) -> str:
+    """Letters and digits only, so LaTeX and PDF text compare despite layout."""
+    return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKC", text).lower())
 
 
-def _add_section(found: list[dict], number: str, title: str) -> None:
-    """Start a section, failing loudly if the numbering goes backwards.
-
-    A misread table cell or cross-reference would otherwise become a bogus
-    section without any error.
-    """
-    last = found[-1]["section"]
-    same_chapter = last.split(".")[0] == number.split(".")[0]
-    if last and same_chapter and _section_key(number) <= _section_key(last):
-        raise ValueError(f"section {number} {title!r} follows {last}: misread?")
-    found.append({"section": number, "title": title, "lines": []})
+def pdf_pages() -> dict[int, tuple[str, str]]:
+    """Each page's text normalized as one string, and as space-separated words."""
+    pages = {}
+    for page in [ABSTRACT_PAGE, *BODY_PAGES, *APPENDIX_PAGES]:
+        text = " ".join(page_text(page))
+        words = " ".join(w for w in map(normalize, text.split()) if w)
+        pages[page] = (normalize(text), f" {words} ")
+    return pages
 
 
-def sections() -> list[dict]:
-    """Group the text into numbered sections, remembering each one's first page."""
-    abstract = page_text(ABSTRACT_PAGE)[1:]
-    found = [
-        {
-            "section": "",
-            "title": "Abstract",
-            "lines": [(ABSTRACT_PAGE, line) for line in abstract],
-        }
-    ]
-    chapter = ""
-    for page in [*BODY_PAGES, *APPENDIX_PAGES]:
-        lines = page_text(page)
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            heading = CHAPTER.match(line)
-            number = SECTION_NUMBER.match(line)
-            if heading:
-                chapter = heading[1] or heading[2]
-                title = CHAPTER_TITLES[chapter]
-                _add_section(found, chapter, title)
-                # Skip the title lines that follow, however they wrap.
-                i += 1
-                shown = ""
-                while i < len(lines) and title.startswith(
-                    f"{shown} {lines[i]}".strip()
-                ):
-                    shown = f"{shown} {lines[i]}".strip()
-                    i += 1
-                continue
-            if number and number[1] == chapter:
-                # A table that runs on from the previous section can land
-                # between the number and its title; it stays with that section.
-                ahead = lines[i + 1 : i + 7]
-                at = next(
-                    (k for k, s in enumerate(ahead) if SECTION_TITLE.match(s)), None
-                )
-                if at is not None:
-                    found[-1]["lines"] += [(page, s) for s in ahead[:at]]
-                    _add_section(found, line, ahead[at])
-                    i += 2 + at
-                    continue
-            body = found[-1]["lines"]
-            if body and body[-1][1].endswith("-") and line[:1].islower():
-                start, first = body.pop()
-                body.append((start, first[:-1] + line))
-            else:
-                body.append((page, line))
-            i += 1
-    return found
+def _key(block: dict) -> str:
+    """The start of a block as it appears in the PDF text."""
+    if "table" in block:
+        return normalize(latex.plain(block["table"]["rows"][0][0]["t"]))[:30]
+    return normalize(latex.block_text(block))[:40]
+
+
+def _check(passage: dict, text: str, words: str) -> list[str]:
+    """Parts of a passage the PDF does not show on its pages."""
+    missing = []
+    for block in passage["blocks"]:
+        if "table" in block:
+            t = block["table"]
+            cells = [c for row in [t["head"], *t["rows"]] for c in row]
+            missing += [
+                latex.plain(c["t"])
+                for c in cells
+                if normalize(latex.plain(c["t"])) not in text
+            ]
+            continue
+        tokens = [w for w in map(normalize, latex.block_text(block).split()) if w]
+        shingles = ["".join(tokens[k : k + 3]) for k in range(max(1, len(tokens) - 2))]
+        found = sum(s in text for s in shingles)
+        # Numbers (figure and table numbers, values) must each match a whole
+        # word of the PDF, so 5.1 cannot pass inside 2551.
+        numbers = [w for w in tokens if re.search(r"\d", w) and f" {w} " not in words]
+        if found < 0.9 * len(shingles) or numbers:
+            missing.append(f"{latex.block_text(block)[:80]} {numbers}")
+    return missing
 
 
 def passages() -> list[dict]:
-    """Cut each section into passages of about TARGET_WORDS words on sentence ends."""
-    out = []
-    for sec in sections():
-        words = [(page, word) for page, line in sec["lines"] for word in line.split()]
-        start = 0
-        while start < len(words):
-            end = min(start + TARGET_WORDS, len(words))
-            # Extend to the end of the sentence, within reason.
-            while end < len(words) and end - start < TARGET_WORDS * 1.5:
-                if words[end - 1][1].endswith((".", ":", "?")):
-                    break
-                end += 1
-            chunk = words[start:end]
-            previous = out[-1] if out else None
-            if len(chunk) < 12 and previous and previous["title"] == sec["title"]:
-                # A short tail joins the passage before it rather than vanish.
-                previous["text"] += " " + " ".join(word for _, word in chunk)
-            elif chunk:
-                pdf_page = chunk[0][0]
-                page = "v" if pdf_page == ABSTRACT_PAGE else str(pdf_page - PAGE_OFFSET)
-                out.append(
-                    {
-                        "section": sec["section"],
-                        "title": sec["title"],
-                        "page": page,
-                        "pdfPage": pdf_page,
-                        "text": " ".join(word for _, word in chunk),
-                    }
-                )
-            start = end
+    """Passages from the LaTeX, each placed on the PDF page where it starts.
+
+    Every passage is checked against the PDF's own text, so a parsing mistake
+    (a dropped word, a wrong figure number) stops the build.
+    """
+    pages = pdf_pages()
+    order = list(pages)
+    out, at, problems = [], 0, []
+    for passage in latex.passages():
+        keys = [_key(b) for b in passage["blocks"]]
+        where = next(
+            (
+                k
+                for k in range(at, len(order))
+                for key in keys
+                if key in pages[order[k]][0]
+            ),
+            None,
+        )
+        if where is None:
+            raise ValueError(
+                f"not found in the PDF: {latex.passage_text(passage)[:80]}"
+            )
+        at = where
+        pdf_page = order[where]
+        # A passage can run on past full-page figures, so look a few pages on.
+        window = order[where : where + 5]
+        text = "".join(pages[p][0] for p in window)
+        words = "".join(pages[p][1] for p in window)
+        problems += [f"p.{pdf_page}: {m}" for m in _check(passage, text, words)]
+        page = "v" if pdf_page == ABSTRACT_PAGE else str(pdf_page - PAGE_OFFSET)
+        out.append({**passage, "page": page, "pdfPage": pdf_page})
+    if problems:
+        raise ValueError("passages differ from the PDF:\n" + "\n".join(problems))
+    # And the other way round: the passages hold most of the PDF's text. The
+    # rest is figure captions, headings, and page furniture the index leaves out.
+    held = sum(len(normalize(latex.passage_text(p))) for p in out)
+    total = sum(len(text) for text, _ in pages.values())
+    if held < COVERAGE * total:
+        raise ValueError(f"passages hold {held / total:.0%} of the PDF text")
     return out
 
 
@@ -263,7 +238,9 @@ def words(text: str) -> list[str]:
 
 def keyword_scores(question: str, items: list[dict]) -> np.ndarray:
     """BM25 score of each passage (with its section title) for the question."""
-    docs = [words(f"{p['title']} {p['text']}") for p in items]
+    docs = [
+        words(f"{p['title']} {p['heading']} {latex.passage_text(p)}") for p in items
+    ]
     avg_len = sum(map(len, docs)) / len(docs)
     terms = set(words(question))
     df = {t: sum(t in d for d in docs) for t in terms}
@@ -293,12 +270,17 @@ def rank(
     return list(np.argsort(-blended, kind="stable"))
 
 
+def embed_text(passage: dict) -> str:
+    heading = f"{passage['heading']}. " if passage["heading"] else ""
+    return heading + latex.passage_text(passage)
+
+
 def main() -> None:
     items = passages()
     embed = Embedder()
     # Each passage vector leans toward its section title, the author's own
     # summary of what the passage is about.
-    vectors = embed([f"{p['title']}: {p['text']}" for p in items])
+    vectors = embed([f"{p['title']}: {embed_text(p)}" for p in items])
     vectors += embed([p["title"] for p in items])
     vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
     index = {

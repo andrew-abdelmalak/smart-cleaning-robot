@@ -12,6 +12,7 @@ from pathlib import Path
 import build_thesis_index as build
 import numpy as np
 import pytest
+import thesis_latex as latex
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -58,7 +59,7 @@ def test_index_shape(index: dict) -> None:
     # Unit vectors survive the 8-bit storage; a misaligned array would not.
     assert np.allclose(np.linalg.norm(vectors, axis=1), 1, atol=0.03)
     for p in passages:
-        assert p["text"].strip()
+        assert p["blocks"] and latex.passage_text(p).strip()
         printed = (
             "v"
             if p["pdfPage"] == build.ABSTRACT_PAGE
@@ -109,4 +110,51 @@ def test_keyword_ranking_finds_exact_terms(index: dict) -> None:
     # The page falls back to keywords alone while the model loads.
     passages = index["passages"]
     top = build.rank("L298N motor driver", None, passages, build.load_vectors(index))
-    assert any("L298N" in passages[i]["text"] for i in top[:3])
+    assert any("L298N" in latex.passage_text(passages[i]) for i in top[:3])
+
+
+def _runs(block: dict):
+    """Every run in a block, nested lists and table cells included."""
+    if "p" in block or "h" in block:
+        yield from block.get("p") or block.get("h")
+    elif "table" in block:
+        t = block["table"]
+        for cell in [*t["head"], *(c for row in t["rows"] for c in row)]:
+            yield from cell["t"]
+    else:
+        for item in block.get("ul") or block.get("ol"):
+            for inner in item:
+                yield from _runs(inner)
+
+
+def test_index_matches_the_latex(index: dict) -> None:
+    # The index is built from docs/thesis; a parser change without a rebuild
+    # (or a rebuild without the parser change) fails here.
+    fresh = latex.passages()
+    assert [p["blocks"] for p in index["passages"]] == [p["blocks"] for p in fresh]
+    assert [p["heading"] for p in index["passages"]] == [p["heading"] for p in fresh]
+
+
+def test_no_raw_latex_reaches_the_site(index: dict) -> None:
+    for p in index["passages"]:
+        for block in p["blocks"]:
+            for run in _runs(block):
+                text = run if isinstance(run, str) else run[1]
+                assert not re.search(r"[\\{}~]", text), (p["section"], text)
+
+
+def test_structure_survives(index: dict) -> None:
+    by_heading = {p["heading"]: p for p in index["passages"] if p["heading"]}
+    tuning = by_heading["PID Tuning Methodology"]["blocks"]
+    steps = next(b["ol"] for b in tuning if "ol" in b)
+    assert len(steps) == 3
+    assert steps[0][0]["p"][0] == ["b", "Start with P only"]
+    assert ["sub", "p"] in tuning[0]["p"]  # K with subscript p
+    tables = [
+        b["table"] for p in index["passages"] for b in p["blocks"] if "table" in b
+    ]
+    cost = next(t for t in tables if t["caption"].startswith("Table 5.1:"))
+    assert [latex.plain(c["t"]) for c in cost["head"]][:2] == [
+        "Robot",
+        "Approx. Cost (USD)",
+    ]
