@@ -4,30 +4,34 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-24
+
+The thesis opens in a PDF viewer on the project site, the page loads itself in the background in reading order, and the site and README speak in the first person. The firmware is unchanged.
+
 ### Added
 
+- The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
+- After the room's firmware starts, the site loads the rest of the page in the background, one file at a time in reading order: the videos, the PDF viewer and the thesis, then the "Ask the thesis" language model, so each part is ready when the visitor gets to it. It skips this when the browser asks to save data or is on a 2G connection; each part then loads when it is used.
+- "Ask the thesis" keeps the last question and its results for the browser tab, so coming back from the PDF viewer shows them again even when the browser reloads the page.
+- The project video, the only clip on the site with sound, has a "Play with sound" button above it that plays it from the start with its music. Scrolling away mutes it again.
 - A test that every firmware number the site quotes still matches the firmware.
 
 ### Changed
 
-- The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
+- Each diagram on the site carries its full description as a visible caption, and the image viewer shows the whole caption on as many lines as it needs. The README describes the state machine in text below its diagram.
+- The site's "For engineers" section is now "How it works", like the README's.
 - The site's "4× speed" and "Sound" controls are switches.
 - The README, the changelog, and the site describe my own work in the first person.
-- After the room's firmware starts, the site loads the rest of the page in the background, in reading order: the videos, the PDF viewer and the thesis, then the "Ask the thesis" language model, so each part is ready when the visitor gets to it. It skips this when the browser asks to save data or is on a 2G connection; each part then loads when it is used.
-- Each diagram on the site carries its full description as a visible caption, and the image viewer shows the whole caption on as many lines as it needs. The README describes the state machine in text below its diagram.
-- The image viewer opens every image at its start, instead of where the previous one was scrolled.
-- "Ask the thesis" keeps the last question and its results for the browser tab, so coming back from the PDF viewer shows them again even when the browser reloads the page.
-- The site's "For engineers" section is now "How it works", like the README's.
 - Percentages on the site and in the README have no space before the % sign.
-- The project video, the only clip on the site with sound, has a "Play with sound" button above it that plays it from the start with its music. Scrolling away mutes it again.
 
 ### Removed
 
-- The "Inside the firmware" signal view from #15. The room, the remote, and its readout already show the real firmware at work, and the thesis covers the rest for readers who dig deeper.
+- The "Inside the firmware" signal view, which was on the site for two days after #15. The room, the remote, and its readout already show the real firmware at work, and the thesis covers the rest for readers who dig deeper (#16).
 
 ### Fixed
 
-- In the project video, the camera now moves from the remote to the robot while it honks, so the honk is on screen.
+- The image viewer opened each image where the previous one was scrolled. It now opens every image at its start.
+- In the project video, the camera now moves from the remote to the robot while it honks, so the honk is on screen (#14).
 
 ## [1.2.0] - 2026-10-21
 
@@ -111,7 +115,8 @@ The firmware as I submitted it with the bachelor thesis (June 2025), published o
 - MicroPython firmware for the Raspberry Pi Pico W: BLE remote control, ultrasonic obstacle avoidance, wheel-encoder odometry, and feed-forward plus PID motion control.
 - Thesis PDF, README, a lint workflow, and the MIT license.
 
-[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.0.0...v1.1.0
