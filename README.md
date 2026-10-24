@@ -45,7 +45,7 @@ The firmware is one file, [`firmware/main.py`](firmware/main.py), that runs a 20
 
 | Priority | Condition | Action |
 |---|---|---|
-| 1 | Horn on | Buzz the motors at 10 % duty as an audible horn |
+| 1 | Horn on | Buzz the motors at 10% duty as an audible horn |
 | 2 | Manual command active | Drive forward, backward, or pivot |
 | 3 | Autonomous mode on | Advance the cleaning state machine one step |
 | 4 | Otherwise | Make sure both motors are stopped |
@@ -56,6 +56,8 @@ The firmware is one file, [`firmware/main.py`](firmware/main.py), that runs a 20
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/state-machine-dark.svg">
   <img src="docs/diagrams/state-machine.svg" alt="State machine: from IDLE, CLEAN starts forward driving; an obstacle closer than 15 cm triggers a 39-pulse left pivot, and a wheel stall longer than 800 ms triggers reverse then the same pivot, both returning to forward driving.">
 </picture>
+
+From IDLE, `CLEAN` starts forward driving. An obstacle closer than 15 cm triggers a 39-pulse left pivot. A wheel stall longer than 800 ms triggers a reverse, then the same pivot. Both return to forward driving.
 
 ### Motion control
 
@@ -72,7 +74,7 @@ A pure PID controller on the wheel encoders drew enough current to cause brownou
 | Turn progress | Reach the target pivot of 39 encoder pulses | 0.6 / 0.1 / 0.2 |
 | Turn balance | Share the pivot between both wheels | 1.5 / 0.05 / 0.3 |
 
-The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 27, kV 0.66; right: kS 30, kV 0.61), with a right-wheel trim of 0.75 and duty capped at 95 %. All integrals are clamped to ±15.
+The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 27, kV 0.66; right: kS 30, kV 0.61), with a right-wheel trim of 0.75 and duty capped at 95%. All integrals are clamped to ±15.
 
 ## Hardware
 

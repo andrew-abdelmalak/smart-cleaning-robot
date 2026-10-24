@@ -12,6 +12,7 @@ if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       } else {
         onScreen.delete(e.target);
         e.target.pause();
+        e.target.muted = true; // back in view, it plays silently again
       }
     }
   }, { threshold: 0.4 });
@@ -24,6 +25,27 @@ if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
   });
 }
 
+// The project video plays muted on its own; this button plays it from the
+// start with its music, or mutes it again. The label says what a press does.
+const film = document.getElementById("film");
+const filmSound = document.getElementById("film-sound");
+const filmLabel = () => {
+  filmSound.querySelector("span").textContent = film.muted || film.paused ? "Play with sound" : "Mute";
+};
+filmSound.addEventListener("click", () => {
+  if (film.muted || film.paused) {
+    film.muted = false;
+    film.currentTime = 0;
+    film.play().catch(() => {
+      film.muted = true; // the browser refused sound; keep the silent loop
+      film.play().catch(() => {});
+    });
+  } else {
+    film.muted = true;
+  }
+});
+for (const event of ["volumechange", "play", "pause"]) film.addEventListener(event, filmLabel);
+
 // Diagrams and photos open in a viewer; Close, Esc, or a click outside closes it.
 const viewer = document.getElementById("viewer");
 const viewerImg = document.createElement("img");
@@ -35,10 +57,14 @@ document.querySelectorAll("a[data-view]").forEach((a) => {
     if (!viewer.showModal || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
     const img = a.querySelector("img");
+    // A diagram's visible caption describes it; a photo's alt text does.
+    const caption = a.closest("figure")?.querySelector("figcaption");
+    const diagram = a.href.endsWith(".svg");
+    const text = diagram && caption ? caption.textContent : img.alt;
     viewerImg.src = a.href;
-    viewerImg.alt = img.alt;
-    viewer.classList.toggle("is-diagram", a.href.endsWith(".svg"));
-    document.getElementById("viewer-caption").textContent = img.alt;
+    viewerImg.alt = text;
+    viewer.classList.toggle("is-diagram", diagram);
+    document.getElementById("viewer-caption").textContent = text;
     viewer.showModal();
   });
 });

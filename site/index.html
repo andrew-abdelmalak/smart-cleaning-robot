@@ -45,7 +45,7 @@
     <nav aria-label="Sections">
       <a href="#build">Build</a>
       <a href="#results">Results</a>
-      <a href="#engineers">For engineers</a>
+      <a href="#how-it-works">How it works</a>
       <a href="#thesis">Thesis</a>
       <a class="bar-code" href="https://github.com/andrew-abdelmalak/smart-cleaning-robot">Code<svg class="out" aria-hidden="true"><use href="#i-out"/></svg></a>
     </nav>
@@ -84,7 +84,7 @@
           <button class="chip" id="lid-button" type="button">Press the lid button</button>
           <button class="chip" id="room-reset" type="button">Reset room</button>
           <label class="switch"><input type="checkbox" role="switch" id="room-speed" autocomplete="off"> 4× speed</label>
-          <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0 %</span></p>
+          <p class="room-score" aria-live="off">Floor cleaned <span id="room-score">0%</span></p>
         </div>
 
         <div class="console">
@@ -130,8 +130,11 @@
     <section class="film" aria-labelledby="film-title">
       <h2 id="film-title">The whole project in 34 seconds</h2>
       <figure>
-        <video src="media/brag.mp4" poster="img/brag-poster.webp" muted loop controls playsinline preload="none" data-autoplay width="1920" height="1080"></video>
-        <figcaption>Music: “Happy Beats &amp; Business Moves Vol. 10” by Sascha Ende, ende.app, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</figcaption>
+        <video id="film" src="media/brag.mp4" poster="img/brag-poster.webp" muted loop controls playsinline preload="none" data-autoplay width="1920" height="1080"></video>
+        <figcaption>
+          <button class="film-sound" id="film-sound" type="button"><svg aria-hidden="true"><use href="#i-horn"/></svg><span>Play with sound</span></button>
+          <span>The only clip on this page with sound. Music: “Happy Beats &amp; Business Moves Vol. 10” by Sascha Ende, ende.app, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</span>
+        </figcaption>
       </figure>
     </section>
 
@@ -194,7 +197,8 @@
         <p>The fix was to let a simple model of each motor supply most of the power (feed-forward) and keep the feedback controller for small corrections only. The robot stayed stable, in exchange for slightly less precise steering.</p>
       </div>
       <figure class="diagram">
-        <a class="zoom" href="diagrams/control-loop.svg" data-view><img src="diagrams/control-loop.svg" width="820" height="400" loading="lazy" alt="Control loop: the target speed passes through a feed-forward motor model to set PWM, the wheel encoders measure the left-right pulse difference, and a PID adds a correction to the target speed of each wheel."></a>
+        <a class="zoom" href="diagrams/control-loop.svg" data-view><img src="diagrams/control-loop.svg" width="820" height="400" loading="lazy" alt="Control loop diagram"></a>
+        <figcaption>The control loop: a feed-forward motor model turns each wheel's target speed into PWM. The wheel encoders measure the left-right pulse difference, and a PID adds a small correction to each wheel's target speed.</figcaption>
       </figure>
     </section>
 
@@ -230,19 +234,19 @@
       </div>
     </section>
 
-    <section class="engineers" id="engineers" aria-labelledby="eng-title">
+    <section class="how" id="how-it-works" aria-labelledby="how-title">
       <div class="section-head">
-        <h2 id="eng-title">For engineers</h2>
+        <h2 id="how-title">How it works</h2>
         <p>The firmware is one MicroPython file on a Raspberry Pi Pico W, running a 20 ms control loop. After the thesis I added 42 host-side tests that run the real firmware against fake hardware, continuous integration, and fixes for five control-logic bugs, each found with a failing test first.</p>
       </div>
-      <div class="eng-grid">
+      <div class="how-grid">
         <figure class="diagram">
-          <a class="zoom" href="diagrams/architecture.svg" data-view><img src="diagrams/architecture.svg" width="1060" height="512" loading="lazy" alt="Block diagram: a phone, push button, ultrasonic sensor, and wheel encoders feed the Raspberry Pi Pico W, which drives the motors through an L298N H-bridge and switches the suction fan and status LED."></a>
-          <figcaption>Hardware: the sensors and the phone feed the Pico W, which drives two motors through an L298N H-bridge.</figcaption>
+          <a class="zoom" href="diagrams/architecture.svg" data-view><img src="diagrams/architecture.svg" width="1060" height="512" loading="lazy" alt="Hardware block diagram"></a>
+          <figcaption>Hardware: the phone, the push button, the ultrasonic sensor, and the wheel encoders feed the Raspberry Pi Pico W. It drives the two motors through an L298N H-bridge and switches the suction fan and the status LED.</figcaption>
         </figure>
         <figure class="diagram">
-          <a class="zoom" href="diagrams/state-machine.svg" data-view><img src="diagrams/state-machine.svg" width="1000" height="488" loading="lazy" alt="State machine: from IDLE, CLEAN starts forward driving; an obstacle closer than 15 cm triggers a 39-pulse left pivot, and a wheel stall longer than 800 ms triggers reverse then the same pivot, both returning to forward driving."></a>
-          <figcaption>Autonomous cleaning: the state machine you drove at the top of the page.</figcaption>
+          <a class="zoom" href="diagrams/state-machine.svg" data-view><img src="diagrams/state-machine.svg" width="1000" height="488" loading="lazy" alt="Autonomous cleaning state machine"></a>
+          <figcaption>Autonomous cleaning, the state machine you drove at the top of the page. From IDLE, CLEAN starts forward driving. An obstacle closer than 15 cm triggers a 39-pulse left pivot. A wheel stall longer than 800 ms triggers a reverse, then the same pivot. Both return to forward driving.</figcaption>
         </figure>
       </div>
       <div class="gains-wrap">
