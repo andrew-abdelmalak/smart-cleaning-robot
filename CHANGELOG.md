@@ -13,11 +13,13 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 - The thesis link and each "Ask the thesis" result open the thesis in a PDF viewer on the site (Mozilla's PDF.js, pinned by version and checksum), at the right page with the passage highlighted.
 - The site's "4× speed" and "Sound" controls are switches.
 - The README, the changelog, and the site describe my own work in the first person.
-- "Ask the thesis" loads its language model in the background once the room's firmware is running and the browser is idle, so the first question gets meaning-based results at once. It skips this when the browser asks to save data or is on a 2G connection.
+- After the room's firmware starts, the site loads the rest of the page in the background, in reading order: the videos, the PDF viewer and the thesis, then the "Ask the thesis" language model, so each part is ready when the visitor gets to it. It skips this when the browser asks to save data or is on a 2G connection; each part then loads when it is used.
 - Each diagram on the site carries its full description as a visible caption, and the image viewer shows the whole caption on as many lines as it needs. The README describes the state machine in text below its diagram.
+- The image viewer opens every image at its start, instead of where the previous one was scrolled.
+- "Ask the thesis" keeps the last question and its results for the browser tab, so coming back from the PDF viewer shows them again even when the browser reloads the page.
 - The site's "For engineers" section is now "How it works", like the README's.
 - Percentages on the site and in the README have no space before the % sign.
-- The project video, the only clip on the site with sound, has a "Play with sound" button under it that plays it from the start with its music. Scrolling away mutes it again.
+- The project video, the only clip on the site with sound, has a "Play with sound" button above it that plays it from the start with its music. Scrolling away mutes it again.
 
 ### Removed
 
