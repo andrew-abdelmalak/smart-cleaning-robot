@@ -4,7 +4,8 @@
 // vector from the all-MiniLM-L6-v2 model (built by
 // scripts/build_thesis_index.py). A question gets a vector from the same
 // model here, through transformers.js, and passages rank by meaning plus a
-// share of keyword match. Results show at once from keywords alone, then
+// share of keyword match. The model starts loading in the background once
+// the page has settled; results show at once from keywords alone, then
 // re-rank when the model has loaded. The ranking mirrors rank() in the
 // build script; keep the two in step.
 
@@ -27,6 +28,7 @@ let index = null; // The parsed index (a promise while it loads), with token lis
 let embed = null; // Promise of a function from question to vector.
 let modelReady = false;
 let latest = 0; // Drop answers to questions the visitor has since replaced.
+let asked = false; // Progress shows only once the visitor has asked something.
 
 const words = (text) => (text.toLowerCase().match(/[a-z0-9]+/g) || []).filter((w) => !STOPWORDS.has(w));
 
@@ -58,9 +60,9 @@ function loadModel(model) {
       total += t;
     }
     // The model is about 23 MB and its runtime about 6 MB more. The status
-    // line is announced to screen readers, so update it in 10 % steps only.
+    // line is announced to screen readers, so update it in 10% steps only.
     const pct = Math.floor((100 * loaded) / total);
-    if (pct < shown + 10) return;
+    if (!asked || pct < shown + 10) return;
     shown = pct;
     setStatus(`Loading the language model (about 30 MB, once): ${pct}%. Until then, results match keywords.`);
   };
@@ -178,6 +180,7 @@ async function ask(question) {
   question = question.trim();
   if (!question) return;
   const id = ++latest;
+  asked = true;
   index ??= loadIndex();
   try {
     index = await index;
@@ -213,6 +216,37 @@ async function ask(question) {
   if (id !== latest) return;
   show(rank(question, query));
   setStatus("The three passages closest in meaning to your question.");
+}
+
+// Load the index and the model in the background, so the first question
+// gets meaning-based results at once. The download waits until the room's
+// firmware is running (or 8 s have passed) and the browser is idle, so it
+// never competes with the page's first content. Focusing the question box
+// starts it at once. With Save-Data on or on 2G, only a question starts it.
+let preloading = false;
+function preload() {
+  if (preloading) return;
+  preloading = true;
+  index ??= loadIndex();
+  index
+    .then((data) => {
+      index = data;
+      embed ??= loadModel(data);
+      return embed;
+    })
+    .catch((err) => {
+      console.error(err);
+      // The visitor's first question tries again.
+      if (index instanceof Promise) index = null;
+      embed = null;
+    });
+}
+const net = navigator.connection;
+if (!(net && (net.saveData || /2g/.test(net.effectiveType)))) {
+  const whenIdle = () => (window.requestIdleCallback ? requestIdleCallback(preload, { timeout: 4000 }) : setTimeout(preload, 500));
+  document.addEventListener("firmware-settled", whenIdle, { once: true });
+  setTimeout(whenIdle, 8000);
+  input.addEventListener("focus", preload, { once: true });
 }
 
 form.addEventListener("submit", (e) => {

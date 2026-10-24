@@ -333,6 +333,8 @@
       ui.status.textContent = message; // the status line is announced; the overlay is not
       console.error(err);
     }
+    // ask.js waits for this before it downloads its language model.
+    document.dispatchEvent(new Event("firmware-settled"));
   }
 
   // ---------------------------------------------------------------
@@ -654,11 +656,11 @@
     ui.state.textContent = s.blocked ? "BLOCKED" : s.manual || s.state;
     ui.sonar.textContent = distanceCm >= 999 ? "no echo" : `${Math.round(distanceCm)} cm`;
     ui.sonar.classList.toggle("is-near", distanceCm < STOP_CM);
-    ui.power.textContent = `${s.duty[0]} / ${s.duty[1]} %`;
+    ui.power.textContent = `${s.duty[0]}% / ${s.duty[1]}%`;
     ui.pulses.textContent = `${s.pulses[0]} / ${s.pulses[1]}`;
     ui.led.textContent = s.ledPattern.replace("_", " ").toLowerCase();
     ui.fan.textContent = s.fan ? "on" : "off";
-    ui.score.textContent = `${Math.round((1 - dust.length / dustTotal) * 100)} %`;
+    ui.score.textContent = `${Math.round((1 - dust.length / dustTotal) * 100)}%`;
     ui.link.textContent = s.connected ? "Disconnect" : "Connect";
     ui.link.classList.toggle("is-off", !s.connected);
 
