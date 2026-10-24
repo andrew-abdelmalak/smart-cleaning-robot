@@ -820,7 +820,7 @@ figcaption {
   box-shadow: 0 1px 2px rgb(45 49 66 / 0.08), 0 16px 40px -20px rgb(45 49 66 / 0.35);
 }
 
-/* The project video is the page's only clip with sound; the button under it says so and turns it on. */
+/* The project video is the page's only clip with sound; the button above it says so and turns it on. */
 .film-sound {
   display: inline-flex;
   flex: none;
@@ -855,12 +855,18 @@ figcaption {
   stroke-linejoin: round;
 }
 
-.film figcaption {
+.film-sound-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 14px;
-  margin-top: 12px;
+  gap: 8px 14px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.film figcaption {
+  margin-top: 10px;
   font-size: 0.8125rem;
 }
 
