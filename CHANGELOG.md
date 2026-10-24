@@ -6,7 +6,7 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [1.3.0] - 2026-10-24
 
-The thesis opens in a PDF viewer on the project site, the site loads the rest of the page in the background in reading order, and the site and README speak in the first person. The firmware is unchanged.
+The thesis opens in a PDF viewer on the project site, search results read as the thesis does, the site loads the rest of the page in the background in reading order, and the site and README speak in the first person. The firmware is unchanged.
 
 ### Added
 
