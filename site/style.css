@@ -1278,12 +1278,12 @@ figcaption {
   list-style: none;
 }
 
-.ask-results li {
+.ask-results > li {
   padding: 20px 0;
   border-bottom: 1px solid var(--rule);
 }
 
-.ask-results li:first-child {
+.ask-results > li:first-child {
   border-top: 1px solid var(--rule);
 }
 
@@ -1293,11 +1293,86 @@ figcaption {
   color: var(--muted);
 }
 
+/* Passages keep the thesis's own structure: headings, lists, tables. */
+.ask-heading {
+  margin: 0 0 6px;
+  font: 600 1rem/1.35 var(--sans);
+}
+
 .ask-text {
   margin: 0 0 10px;
 }
 
-.ask-results a {
+.ask-label {
+  margin: 14px 0 4px;
+  font-size: 0.9375rem;
+}
+
+.ask-list {
+  margin: 0 0 10px;
+  padding-left: 1.3em;
+}
+
+.ask-list li {
+  margin: 0 0 6px;
+}
+
+.ask-list li::marker {
+  color: var(--muted);
+}
+
+.ask-list .ask-list {
+  margin: 6px 0 0;
+}
+
+.ask-list .ask-text {
+  margin: 0 0 6px;
+}
+
+.ask-results strong {
+  font-weight: 600;
+}
+
+.ask-results sub {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* Wide tables scroll inside the result, never the page. */
+.ask-table {
+  margin: 4px 0 12px;
+  overflow-x: auto;
+}
+
+.ask-table table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-table caption {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font: 500 0.8125rem/1.4 var(--mono);
+  text-align: left;
+}
+
+.ask-table th,
+.ask-table td {
+  padding: 7px 14px 7px 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ask-table th {
+  border-bottom-color: var(--ink);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ask-results > li > a {
   font: 500 0.875rem var(--mono);
   text-underline-offset: 3px;
 }

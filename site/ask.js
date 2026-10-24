@@ -1,6 +1,7 @@
 // "Ask the thesis": semantic search over the thesis PDF, run in the browser.
 //
-// thesis-index.json holds the thesis cut into short passages, each with a
+// thesis-index.json holds the thesis cut into short passages, read from its
+// LaTeX so they keep their headings, lists, tables, and emphasis, each with a
 // vector from the all-MiniLM-L6-v2 model (built by
 // scripts/build_thesis_index.py). A question gets a vector from the same
 // model here, through transformers.js, and passages rank by meaning plus a
@@ -30,6 +31,20 @@ let modelReady = false;
 let latest = 0; // Drop answers to questions the visitor has since replaced.
 let asked = false; // Progress shows only once the visitor has asked something.
 
+// A passage is a list of blocks: {p}, {h}, {ul}, {ol, start}, or {table};
+// text runs are strings or [style, text] pairs. These mirror block_text()
+// and passage_text() in scripts/thesis_latex.py; keep them in step.
+const runsText = (runs) => runs.map((r) => (typeof r === "string" ? r : r[1])).join("");
+function blockText(b) {
+  if (b.p || b.h) return runsText(b.p || b.h);
+  if (b.table) {
+    const cells = [...b.table.head, ...b.table.rows.flat()];
+    return [b.table.caption, ...cells.map((c) => runsText(c.t))].join(" ");
+  }
+  return (b.ul || b.ol).flatMap((item) => item.map(blockText)).join(" ");
+}
+const passageText = (p) => p.blocks.map(blockText).join(" ");
+
 const words = (text) => (text.toLowerCase().match(/[a-z0-9]+/g) || []).filter((w) => !STOPWORDS.has(w));
 
 async function loadIndex() {
@@ -38,7 +53,7 @@ async function loadIndex() {
   const data = await res.json();
   const bytes = Uint8Array.from(atob(data.vectors), (c) => c.charCodeAt(0));
   if (bytes.length !== data.passages.length * data.dim) throw new Error("thesis-index.json: vectors do not match passages");
-  const docs = data.passages.map((p) => words(`${p.title} ${p.text}`));
+  const docs = data.passages.map((p) => words(`${p.title} ${p.heading} ${passageText(p)}`));
   return {
     ...data,
     vectors: new Int8Array(bytes.buffer),
@@ -145,7 +160,8 @@ function restore() {
   } catch {
     return;
   }
-  if (!saved?.passages?.length) return;
+  // Results saved before the index kept its structure have no blocks.
+  if (!saved?.passages?.length || !saved.passages.every((p) => p.blocks)) return;
   input.value = saved.question;
   show(saved.passages);
   setStatus(saved.status);
@@ -169,9 +185,66 @@ function viewerPhrase(text) {
   const words = run.slice(0, stop >= 0 ? Math.min(stop + 1, 14) : 14);
   return (words.join(" ") || text.split(" ")[0]).replace(/[,.;:]$/, "");
 }
+// The phrase comes from the passage's first block alone: in the PDF a list
+// bullet or a table's layout sits between blocks, and the search would miss.
+// For a table it is the first cell, which the build places on this page.
+function firstText(blocks) {
+  const b = blocks[0];
+  if (b.p || b.h) return runsText(b.p || b.h);
+  if (b.table) return runsText(b.table.rows[0][0].t);
+  return firstText((b.ul || b.ol)[0]);
+}
 function viewerLink(p) {
-  const search = encodeURIComponent(viewerPhrase(p.text));
+  const search = encodeURIComponent(viewerPhrase(firstText(p.blocks)));
   return `pdfjs/web/viewer.html?file=../../thesis.pdf#page=${Number(p.pdfPage)}&search=${search}&phrase=true`;
+}
+
+// Results are built from elements and text nodes only; nothing from the
+// index is ever parsed as HTML.
+const TAGS = { b: "strong", i: "em", code: "code", sub: "sub", sup: "sup" };
+function inline(el, runs) {
+  for (const run of runs) {
+    if (typeof run === "string") {
+      el.append(run);
+    } else {
+      const span = document.createElement(TAGS[run[0]]);
+      span.textContent = run[1];
+      el.append(span);
+    }
+  }
+  return el;
+}
+const make = (tag, className) => Object.assign(document.createElement(tag), className ? { className } : {});
+
+function render(block) {
+  if (block.p) return inline(make("p", "ask-text"), block.p);
+  if (block.h) return inline(make("p", "ask-label"), block.h);
+  if (block.table) {
+    const { caption, head, rows } = block.table;
+    const table = make("table");
+    table.createCaption().textContent = caption;
+    const cell = (tag, c) => {
+      const el = inline(make(tag), c.t);
+      if (c.span > 1) el.colSpan = c.span;
+      return el;
+    };
+    table.createTHead().insertRow().append(...head.map((c) => cell("th", c)));
+    const body = table.createTBody();
+    for (const row of rows) body.insertRow().append(...row.map((c) => cell("td", c)));
+    const wrap = make("div", "ask-table");
+    wrap.append(table);
+    return wrap;
+  }
+  const list = make(block.ol ? "ol" : "ul", "ask-list");
+  if (block.ol && block.start > 1) list.start = block.start;
+  for (const item of block.ol || block.ul) {
+    const li = make("li");
+    // An item that is one paragraph reads as a line, not a boxed paragraph.
+    if (item.length === 1 && item[0].p) inline(li, item[0].p);
+    else li.append(...item.map(render));
+    list.append(li);
+  }
+  return list;
 }
 
 let shownKey = "";
@@ -179,23 +252,26 @@ let shownKey = "";
 function show(passages) {
   // Re-ranking often keeps the same three passages; leave them, and any
   // keyboard focus on their links, in place.
-  const key = passages.map((p) => `${p.pdfPage}:${p.text.slice(0, 40)}`).join("|");
+  const key = passages.map((p) => `${p.pdfPage}:${passageText(p).slice(0, 40)}`).join("|");
   if (key === shownKey) return;
   shownKey = key;
   results.replaceChildren(
     ...passages.map((p) => {
-      const li = document.createElement("li");
+      const li = make("li");
       const page = `page ${p.page}`;
-      const where = document.createElement("p");
-      where.className = "ask-where";
+      const where = make("p", "ask-where");
       where.textContent = `${p.section ? `${p.section} ` : ""}${p.title} · ${page}`;
-      const text = document.createElement("p");
-      text.className = "ask-text";
-      text.textContent = p.text;
-      const link = document.createElement("a");
+      li.append(where);
+      if (p.heading) {
+        const heading = make("h4", "ask-heading");
+        heading.textContent = p.heading;
+        li.append(heading);
+      }
+      li.append(...p.blocks.map(render));
+      const link = make("a");
       link.href = viewerLink(p);
       link.textContent = `Open ${page} of the PDF`;
-      li.append(where, text, link);
+      li.append(link);
       return li;
     }),
   );
