@@ -4,6 +4,10 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
+
 ## [1.3.0] - 2026-10-24
 
 The thesis opens in a PDF viewer on the project site, search results read as the thesis does, the site loads the rest of the page in the background in reading order, and the site and README speak in the first person. The firmware is unchanged.

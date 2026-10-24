@@ -102,6 +102,14 @@ async function preloadPage() {
 document.addEventListener("firmware-settled", preloadPage, { once: true });
 setTimeout(preloadPage, 20000); // if the room never starts
 
+// Back to top appears once the hero, with the room, has scrolled away. It is
+// a plain link to the top bar, so it also works without JavaScript; hidden, it
+// is out of the tab order.
+const toTop = document.getElementById("to-top");
+new IntersectionObserver(([e]) => toTop.classList.toggle("is-shown", !e.isIntersecting)).observe(
+  document.querySelector(".hero"),
+);
+
 // Diagrams and photos open in a viewer; Close, Esc, or a click outside closes it.
 const viewer = document.getElementById("viewer");
 const viewerImg = document.createElement("img");
