@@ -12,7 +12,6 @@ if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       } else {
         onScreen.delete(e.target);
         e.target.pause();
-        e.target.muted = true; // back in view, it plays silently again
       }
     }
   }, { threshold: 0.4 });
@@ -45,16 +44,25 @@ filmSound.addEventListener("click", () => {
   }
 });
 for (const event of ["volumechange", "play", "pause"]) film.addEventListener(event, filmLabel);
+// Sound never plays out of sight: leaving the screen or the tab stops and
+// mutes the film, so back in view it plays silently again.
+const silence = () => {
+  if (film.muted) return;
+  film.pause();
+  film.muted = true;
+};
+new IntersectionObserver(([e]) => e.isIntersecting || silence()).observe(film);
+document.addEventListener("visibilitychange", () => document.hidden && silence());
 
 // After the room's firmware runs, load the rest of the page in the
 // background, in reading order, so each part is ready when the visitor gets
 // to it: the videos, then the PDF viewer and the thesis it opens. Then
-// ask.js loads its search model. With Save-Data on or on 2G, each part
-// loads only when it is used.
+// ask.js loads its search model. With Save-Data on or on 2G or 3G, each
+// part loads only when it is used, and a hidden tab waits until it is shown.
 const net = navigator.connection;
-const lowData = Boolean(net && (net.saveData || /2g/.test(net.effectiveType)));
+const lowData = Boolean(net && (net.saveData || /[23]g/.test(net.effectiveType)));
 const PDF_FILES = [
-  "pdfjs/web/viewer.html",
+  "pdfjs/web/viewer.html?file=../../thesis.pdf", // the URL every thesis link opens
   "pdfjs/web/viewer.css",
   "pdfjs/web/viewer.mjs",
   "pdfjs/build/pdf.mjs",
@@ -64,8 +72,12 @@ const PDF_FILES = [
   "thesis.pdf",
 ];
 
+const shown = () =>
+  document.hidden ? new Promise((r) => document.addEventListener("visibilitychange", r, { once: true })).then(shown) : null;
+
 // Read a file into the browser's cache without keeping it in memory.
 async function warm(url) {
+  await shown();
   const res = await fetch(url, { priority: "low" });
   const reader = res.body.getReader();
   while (!(await reader.read()).done);
@@ -78,9 +90,13 @@ async function preloadPage() {
   await new Promise((r) => (window.requestIdleCallback ? requestIdleCallback(r, { timeout: 4000 }) : setTimeout(r, 500)));
   if (!lowData) {
     // One file at a time, so the next section is always ready first.
-    const videos = [...document.querySelectorAll('video[preload="none"]')].map((v) => v.getAttribute("src"));
+    // A video the visitor has already reached is loading on its own.
+    const videos = [...document.querySelectorAll('video[preload="none"]')]
+      .filter((v) => v.readyState === 0 && v.networkState !== HTMLMediaElement.NETWORK_LOADING)
+      .map((v) => v.getAttribute("src"));
     for (const url of [...videos, ...PDF_FILES]) await warm(url).catch(() => {});
   }
+  window.pagePreloaded = true; // for a script that starts listening late
   document.dispatchEvent(new Event("page-preloaded"));
 }
 document.addEventListener("firmware-settled", preloadPage, { once: true });
@@ -103,7 +119,9 @@ document.querySelectorAll("a[data-view]").forEach((a) => {
     const diagram = a.href.endsWith(".svg");
     const text = diagram && caption ? caption.textContent : img.alt;
     viewerImg.src = a.href;
-    viewerImg.alt = text;
+    // The caption shows the description; the image keeps a diagram's short
+    // name, and a photo, whose caption is its alt text, is not read twice.
+    viewerImg.alt = diagram ? img.alt : "";
     viewer.classList.toggle("is-diagram", diagram);
     document.getElementById("viewer-caption").textContent = text;
     viewer.showModal();

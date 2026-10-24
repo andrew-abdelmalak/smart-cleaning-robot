@@ -145,10 +145,10 @@ function setStatus(text) {
 // page from the browser's cache when it can; when the browser reloads it
 // instead, this puts the question and its results back as the page loads,
 // so the browser's scroll restore lands on them.
-const SAVED = "ask-the-thesis";
-function remember(question, passages) {
+const SAVED = "ask-the-thesis-v2"; // bump when the passage format changes
+function remember(question, passages, final) {
   try {
-    sessionStorage.setItem(SAVED, JSON.stringify({ question, passages, status: status.textContent }));
+    sessionStorage.setItem(SAVED, JSON.stringify({ question, passages, final, status: status.textContent }));
   } catch {
     // Storage can be full or blocked; the search still works.
   }
@@ -160,11 +160,19 @@ function restore() {
   } catch {
     return;
   }
-  // Results saved before the index kept its structure have no blocks.
-  if (!saved?.passages?.length || !saved.passages.every((p) => p.blocks)) return;
+  if (!saved?.passages?.length || !saved.passages.every((p) => Array.isArray(p.blocks) && p.blocks.length)) return;
   input.value = saved.question;
-  show(saved.passages);
+  try {
+    show(saved.passages);
+  } catch (err) {
+    console.error(err);
+    results.replaceChildren();
+    sessionStorage.removeItem(SAVED);
+    return;
+  }
   setStatus(saved.status);
+  // Keyword matches saved while the model loaded: rank them by meaning now.
+  if (!saved.final) ask(saved.question);
 }
 
 // Open the passage in the PDF.js viewer at its page, with up to 14 of its
@@ -189,9 +197,10 @@ function viewerPhrase(text) {
 // bullet or a table's layout sits between blocks, and the search would miss.
 // For a table it is the first cell, which the build places on this page.
 function firstText(blocks) {
-  const b = blocks[0];
+  const b = blocks?.[0];
+  if (!b) return "";
   if (b.p || b.h) return runsText(b.p || b.h);
-  if (b.table) return runsText(b.table.rows[0][0].t);
+  if (b.table) return runsText(b.table.rows[0]?.[0]?.t ?? []);
   return firstText((b.ul || b.ol)[0]);
 }
 function viewerLink(p) {
@@ -222,16 +231,21 @@ function render(block) {
   if (block.table) {
     const { caption, head, rows } = block.table;
     const table = make("table");
-    table.createCaption().textContent = caption;
+    if (caption) table.createCaption().textContent = caption;
     const cell = (tag, c) => {
       const el = inline(make(tag), c.t);
       if (c.span > 1) el.colSpan = c.span;
+      if (tag === "th") el.scope = "col";
       return el;
     };
     table.createTHead().insertRow().append(...head.map((c) => cell("th", c)));
     const body = table.createTBody();
     for (const row of rows) body.insertRow().append(...row.map((c) => cell("td", c)));
+    // A wide table scrolls on its own; keyboard users can reach it too.
     const wrap = make("div", "ask-table");
+    wrap.tabIndex = 0;
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", caption || "Table");
     wrap.append(table);
     return wrap;
   }
@@ -254,7 +268,6 @@ function show(passages) {
   // keyboard focus on their links, in place.
   const key = passages.map((p) => `${p.pdfPage}:${passageText(p).slice(0, 40)}`).join("|");
   if (key === shownKey) return;
-  shownKey = key;
   results.replaceChildren(
     ...passages.map((p) => {
       const li = make("li");
@@ -275,6 +288,7 @@ function show(passages) {
       return li;
     }),
   );
+  shownKey = key;
 }
 
 async function ask(question) {
@@ -299,7 +313,7 @@ async function ask(question) {
     quick = rank(question, null);
     show(quick);
     setStatus(quick.length ? "Keyword matches while the language model loads." : "No keyword matches. The language model is loading.");
-    remember(question, quick);
+    remember(question, quick, false);
   }
   let query;
   try {
@@ -319,7 +333,7 @@ async function ask(question) {
   const passages = rank(question, query);
   show(passages);
   setStatus("The three passages closest in meaning to your question.");
-  remember(question, passages);
+  remember(question, passages, true);
 }
 
 // Load the index and the model in the background, so the first question
@@ -332,22 +346,26 @@ function preload() {
   if (preloading) return;
   preloading = true;
   index ??= loadIndex();
-  index
+  const loading = index;
+  let model = null;
+  loading
     .then((data) => {
-      index = data;
-      embed ??= loadModel(data);
-      return embed;
+      if (index === loading) index = data;
+      model = embed ??= loadModel(data);
+      return model;
     })
     .catch((err) => {
       console.error(err);
-      // The visitor's first question tries again.
-      if (index instanceof Promise) index = null;
-      embed = null;
+      // The visitor's first question tries again; a retry already under
+      // way is left alone.
+      if (index === loading) index = null;
+      if (model && embed === model) embed = null;
     });
 }
 const net = navigator.connection;
-if (!(net && (net.saveData || /2g/.test(net.effectiveType)))) {
-  document.addEventListener("page-preloaded", preload, { once: true });
+if (!(net && (net.saveData || /[23]g/.test(net.effectiveType)))) {
+  if (window.pagePreloaded) preload();
+  else document.addEventListener("page-preloaded", preload, { once: true });
   input.addEventListener("focus", preload, { once: true });
 }
 
