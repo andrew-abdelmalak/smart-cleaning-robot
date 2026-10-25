@@ -94,3 +94,35 @@ def test_page_constants_match_the_firmware() -> None:
         assert re.findall(r"<td>([\d.]+)</td>", row) == [
             str(gains[k]) for k in ("P", "I", "D")
         ], loop
+
+
+def test_links_into_the_repository_exist() -> None:
+    """Relative links in Markdown, and links to this repo's files, all resolve."""
+    import subprocess
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "*.md", "*.html", "*.cff"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    repo = r"github\.com/andrew-abdelmalak/smart-cleaning-robot/(?:blob|tree|raw)/main/"
+    broken = []
+    for name in tracked:
+        if name.startswith("docs/thesis/"):  # the frozen thesis source
+            continue
+        path = ROOT / name
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for target in re.findall(repo + r"([^\s\"')#?]+)", text):
+            if not (ROOT / target.rstrip(".,")).exists():
+                broken.append(f"{name}: {target}")
+        if name.endswith(".md"):
+            links = re.findall(r'(?:src|href)="([^"]+)"', text)
+            links += re.findall(r"\]\(([^)\s]+)\)", text)
+            for link in links:
+                if link.startswith(("http", "#", "mailto:")):
+                    continue
+                if not (path.parent / link.split("#")[0]).exists():
+                    broken.append(f"{name}: {link}")
+    assert not broken, broken

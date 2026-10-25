@@ -8,7 +8,7 @@ The sources I made for the robot's custom parts: the circuit board in KiCad and 
 
 | Schematic | Layout | 3D view |
 |---|---|---|
-| <img src="../docs/thesis/images/misc/kicad_schematic.png" width="260" alt="KiCad schematic of the board"> | <img src="../docs/thesis/images/misc/kicad_layout.png" width="260" alt="KiCad layout of the two-layer board"> | <img src="../docs/thesis/images/misc/kicad_3d_render.png" width="260" alt="KiCad 3D render of the populated board"> |
+| <img src="../docs/thesis/images/screenshots/kicad_schematic.png" width="260" alt="KiCad schematic of the board"> | <img src="../docs/thesis/images/screenshots/kicad_layout.png" width="260" alt="KiCad layout of the two-layer board"> | <img src="../docs/thesis/images/screenshots/kicad_3d_render.png" width="260" alt="KiCad 3D render of the populated board"> |
 
 The symbols and footprints, including the Pico W and the LM2596 module from third-party KiCad libraries, are embedded in the project files. The Pico W's 3D model path still points to my own computer, so KiCad's 3D viewer shows the board without that one model.
 
