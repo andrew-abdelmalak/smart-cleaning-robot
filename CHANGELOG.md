@@ -4,6 +4,10 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- "Read the thesis" opens the PDF at its first page. Before, a returning visitor got the page the viewer last showed them, since PDF.js remembers it.
+
 ## [1.4.0] - 2026-10-25
 
 The repository now holds the robot's hardware sources and its earlier firmware, the project site spaces its sections by content and gains a back-to-top button, and four security alerts in development dependencies are fixed. The firmware is unchanged.
