@@ -61,7 +61,7 @@ From IDLE, `CLEAN` starts forward driving. An obstacle closer than 15 cm trigger
 
 ### Motion control
 
-A pure PID controller on the wheel encoders drew enough current to cause brownouts that stalled a motor. The final design uses a feed-forward motor model for most of the drive and keeps the PID only as a small correction to each wheel's target speed.
+A pure PID controller on the wheel encoders drew enough current to cause brownouts that stalled a motor. The final design uses a feed-forward motor model for most of the drive and keeps the PID only as a small correction to each wheel's target speed. The earlier versions on the way here, from timed driving to per-wheel PID and the tuner that found the final gains, are in [`docs/history/`](docs/history/).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/control-loop-dark.svg">
@@ -91,11 +91,11 @@ The feed-forward model is `PWM = kS + kV × speed`, fitted per wheel (left: kS 2
 | Power | 12 V Li-ion pack, LM2596S buck converter to 5 V | |
 | Chassis and PCB | 3D-printed PLA+, custom KiCad PCB | |
 
-The thesis has the full bill of materials (Appendix A), the CAD views, and the PCB schematic and layout.
+The KiCad project for the board, the SolidWorks files for the printed parts, and their drawings are in [`hardware/`](hardware/). The thesis has the full bill of materials (Appendix A).
 
 ## Getting started
 
-You need a Raspberry Pi Pico W with [MicroPython for the Pico W](https://micropython.org/download/RPI_PICO_W/), [`mpremote`](https://docs.micropython.org/en/latest/reference/mpremote.html), and a phone with [nRF Toolbox](https://www.nordicsemi.com/Products/Development-tools/nrf-toolbox) or another BLE UART app.
+You need a Raspberry Pi Pico W with [MicroPython for the Pico W](https://micropython.org/download/RPI_PICO_W/) (the robot ran v1.25.0, from April 2025), [`mpremote`](https://docs.micropython.org/en/latest/reference/mpremote.html), and a phone with [nRF Toolbox](https://www.nordicsemi.com/Products/Development-tools/nrf-toolbox) or another BLE UART app.
 
 1. Flash MicroPython: hold BOOTSEL while you connect USB, then copy the `.uf2` file to the drive that appears.
 2. Copy the firmware to the board as `main.py`, so it runs at boot:
@@ -172,9 +172,11 @@ With the `search` group installed, the tests also embed 21 sample questions and 
 
 ```text
 firmware/main.py      MicroPython firmware (copy to the board as main.py)
+hardware/             KiCad board, SolidWorks parts, and drawings
 scripts/              Builds the thesis search index; fetches the site's pinned libraries
 tests/                Host-side tests and hardware fakes
 docs/diagrams/        Diagrams used in this README
+docs/history/         Earlier firmware versions, kept as written
 docs/media/           Demo clips from the thesis presentation and the project video
 docs/thesis/          Thesis PDF and its LaTeX source
 site/                 Project site: the firmware in a drawn room, and thesis search

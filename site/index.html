@@ -195,7 +195,7 @@
       <div class="story-body">
         <p>Two cheap motors never spin at exactly the same speed, so a robot told to go straight drifts. I added wheel sensors and a feedback controller (a PID controller) that pushes harder on whichever wheel falls behind.</p>
         <p>It worked until the robot turned. The controller asked for so much current that the supply voltage sagged and a motor stalled, and the robot stopped dead.</p>
-        <p>The fix was to let a simple model of each motor supply most of the power (feed-forward) and keep the feedback controller for small corrections only. The robot stayed stable, in exchange for slightly less precise steering.</p>
+        <p>The fix was to let a simple model of each motor supply most of the power (feed-forward) and keep the feedback controller for small corrections only. The robot stayed stable, in exchange for slightly less precise steering. The <a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/docs/history">earlier firmware versions</a> show each step.</p>
       </div>
       <figure class="diagram">
         <a class="zoom" href="diagrams/control-loop.svg" data-view><img src="diagrams/control-loop.svg" width="820" height="400" loading="lazy" alt="Control loop diagram"></a>
@@ -264,6 +264,8 @@
       <ul class="links">
         <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/blob/main/firmware/main.py">firmware/main.py</a> The firmware</li>
         <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/tests">tests/</a> Host tests and hardware fakes</li>
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/hardware">hardware/</a> The circuit board, the 3D-printed parts, and their drawings</li>
+        <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot/tree/main/docs/history">docs/history/</a> The earlier firmware versions</li>
         <li><a href="https://github.com/andrew-abdelmalak/smart-cleaning-robot#readme">README</a> Setup, commands, pins, and limitations</li>
       </ul>
     </section>
