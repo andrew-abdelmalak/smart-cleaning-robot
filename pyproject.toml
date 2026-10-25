@@ -35,6 +35,8 @@ pythonpath = ["firmware", "scripts"]
 
 [tool.ruff]
 src = ["firmware", "tests"]
+# Earlier firmware versions, kept as written (docs/history/README.md).
+extend-exclude = ["docs/history"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "SIM"]
