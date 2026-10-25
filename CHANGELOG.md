@@ -15,6 +15,10 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 - The space between the site's sections follows the content: a change of topic gets a full pause, the real-robot clips that continue the project video a shorter one, and both scale with the screen's height as well as its width. Between topics it is now about 80 px on a desktop and 48 px on a phone, down from 120 px and 64 px.
 - A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
 
+### Security
+
+- Development dependencies updated past four Dependabot alerts: certifi 2026.10.19 removes root certificates whose intermediate keys were compromised, and filelock 4.2.4 fixes lock-file attacks. Both are newer than the project's two-week window, so `pyproject.toml` allows these two packages releases from the last three days.
+
 ## [1.3.0] - 2026-10-24
 
 The thesis opens in a PDF viewer on the project site, search results read as the thesis does, the site loads the rest of the page in the background in reading order, and the site and README speak in the first person. The firmware is unchanged.
