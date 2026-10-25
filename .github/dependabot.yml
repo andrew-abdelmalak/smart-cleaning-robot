@@ -24,6 +24,11 @@ updates:
     # Match exclude-newer in pyproject.toml, or uv refuses the update.
     cooldown:
       default-days: 14
+    # tokenizers needs huggingface-hub below 2.0, so a 2.x update can never
+    # resolve; skip major updates until tokenizers allows them.
+    ignore:
+      - dependency-name: huggingface-hub
+        update-types: ["version-update:semver-major"]
 
   # Browser libraries the site serves itself (package.json). Nothing is
   # installed: after Dependabot bumps a version, CI fails until someone runs
