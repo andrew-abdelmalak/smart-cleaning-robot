@@ -6,6 +6,9 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ### Added
 
+- `hardware/`: the KiCad project for the circuit board, the SolidWorks files for the 3D-printed parts, and their drawings.
+- `docs/history/`: the three earlier firmware versions, from timed driving to per-wheel PID and the tuner that found the final gains, with a timeline.
+- The README names the MicroPython version the robot ran (v1.25.0).
 - A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
 
 ## [1.3.0] - 2026-10-24
