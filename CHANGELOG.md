@@ -4,16 +4,22 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-25
+
+The repository now holds the robot's hardware sources and its earlier firmware, the project site spaces its sections by content and gains a back-to-top button, and four security alerts in development dependencies are fixed. The firmware is unchanged.
+
 ### Added
 
 - `hardware/`: the KiCad project for the circuit board, the SolidWorks files for the 3D-printed parts, and their drawings.
 - `docs/history/`: the three earlier firmware versions, from timed driving to per-wheel PID and the tuner that found the final gains, with a timeline.
+- A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
 - The README names the MicroPython version the robot ran (v1.25.0).
+- A test that every relative link in the Markdown files, and every site or README link to this repository's files, points to a file that exists.
 
 ### Changed
 
 - The space between the site's sections follows the content: a change of topic gets a full pause, the real-robot clips that continue the project video a shorter one, and both scale with the screen's height as well as its width. Between topics it is now about 80 px on a desktop and 48 px on a phone, down from 120 px and 64 px.
-- A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
+- Dependabot no longer proposes huggingface-hub 2.x, which tokenizers cannot use yet, so the monthly uv update stops failing.
 
 ### Security
 
@@ -131,7 +137,8 @@ The firmware as I submitted it with the bachelor thesis (June 2025), published o
 - MicroPython firmware for the Raspberry Pi Pico W: BLE remote control, ultrasonic obstacle avoidance, wheel-encoder odometry, and feed-forward plus PID motion control.
 - Thesis PDF, README, a lint workflow, and the MIT license.
 
-[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/andrew-abdelmalak/smart-cleaning-robot/compare/v1.1.0...v1.1.1

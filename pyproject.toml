@@ -1,6 +1,6 @@
 [project]
 name = "smart-cleaning-robot"
-version = "1.3.0"
+version = "1.4.0"
 description = "MicroPython firmware for a Raspberry Pi Pico W cleaning robot with BLE control and feed-forward plus PID motion control."
 readme = "README.md"
 license = "MIT"
