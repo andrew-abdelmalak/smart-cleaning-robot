@@ -28,6 +28,10 @@ package = false
 # Resolve only releases at least two weeks old. Dependabot waits as long
 # (.github/dependabot.yml), so its uv updates stay inside this window.
 exclude-newer = "14 days"
+# Security fixes may not wait two weeks: certifi 2026.10.19 removes
+# compromised root CAs, and filelock 4.2.1 fixes lock-file attacks
+# (Dependabot alerts 1 to 4). Drop this once they pass the window above.
+exclude-newer-package = { certifi = "3 days", filelock = "3 days" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
