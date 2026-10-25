@@ -4,6 +4,10 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Changed
+
+- Every link to the thesis (README, support page, issue form, citation) opens it in the site's PDF viewer instead of GitHub's file view.
+
 ### Fixed
 
 - "Read the thesis" opens the PDF at its first page. Before, a returning visitor got the page the viewer last showed them, since PDF.js remembers it.

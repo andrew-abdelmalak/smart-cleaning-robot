@@ -2,7 +2,7 @@
 
 ## Questions
 
-Open an issue with the [question form](https://github.com/andrew-abdelmalak/smart-cleaning-robot/issues/new?template=question.yml). Check the [README](../README.md) and the [thesis](../docs/thesis/thesis.pdf) first; most build and wiring questions are answered there.
+Open an issue with the [question form](https://github.com/andrew-abdelmalak/smart-cleaning-robot/issues/new?template=question.yml). Check the [README](../README.md) and the [thesis](https://andrew-abdelmalak.github.io/smart-cleaning-robot/pdfjs/web/viewer.html?file=../../thesis.pdf#page=1) first; most build and wiring questions are answered there.
 
 ## Bugs
 

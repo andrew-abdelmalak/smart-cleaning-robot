@@ -21,7 +21,7 @@ The robot is a 35 cm round chassis that I designed in SolidWorks and 3D-printed,
 
 ## Results
 
-From the prototype tests in the [thesis](docs/thesis/thesis.pdf) (Table 4.2 and section 5.1.1):
+From the prototype tests in the [thesis](https://andrew-abdelmalak.github.io/smart-cleaning-robot/pdfjs/web/viewer.html?file=../../thesis.pdf#page=1) (Table 4.2 and section 5.1.1):
 
 | Metric | Result |
 |---|---|
@@ -198,7 +198,7 @@ These come from the hardware and the hand tuning, and need the robot to fix and 
 
 *Design and Implementation of a Smart Cleaning Robot*, Andrew Khalil Samuel Abdelmalak, Faculty of Engineering and Materials Sciences, German University in Cairo, June 2025.
 
-- [Thesis PDF](docs/thesis/thesis.pdf)
+- [Thesis PDF](https://andrew-abdelmalak.github.io/smart-cleaning-robot/pdfjs/web/viewer.html?file=../../thesis.pdf#page=1)
 - [LaTeX source](docs/thesis/main.tex), also on [Overleaf (read only)](https://www.overleaf.com/read/hzhdgbtyqgmt#95d41f)
 - [Ask the thesis](https://andrew-abdelmalak.github.io/smart-cleaning-robot/#thesis): semantic search over the thesis on the project site, which links each result to its page in the PDF
 
