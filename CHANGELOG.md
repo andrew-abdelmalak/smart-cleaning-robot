@@ -9,6 +9,10 @@ I record all notable changes to this project here. The format follows [Keep a Ch
 - `hardware/`: the KiCad project for the circuit board, the SolidWorks files for the 3D-printed parts, and their drawings.
 - `docs/history/`: the three earlier firmware versions, from timed driving to per-wheel PID and the tuner that found the final gains, with a timeline.
 - The README names the MicroPython version the robot ran (v1.25.0).
+
+### Changed
+
+- The space between the site's sections follows the content: a change of topic gets a full pause, the real-robot clips that continue the project video a shorter one, and both scale with the screen's height as well as its width. Between topics it is now about 80 px on a desktop and 48 px on a phone, down from 120 px and 64 px.
 - A back-to-top button on the project site. It appears once the room has scrolled away, and it is a plain link, so it also works without JavaScript.
 
 ## [1.3.0] - 2026-10-24
